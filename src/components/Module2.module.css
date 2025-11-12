@@ -1,0 +1,154 @@
+/* Contenedor general de toda la interfaz */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  font-family: sans-serif;
+  background-color: #f0f2f5;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Botón de volver al menú principal, fuera de la tarjeta */
+.backBtn {
+  position: absolute;
+  top: 70px;
+  left: 20px;
+  padding: 10px 15px;
+  background-color: #213547;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.backBtn:hover {
+  background-color: #1976d2;
+}
+
+/* Tarjeta principal que contiene todos los inputs y botones */
+.card {
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-width: 900px; /* Ajusta el ancho máximo */
+  width: 100%;
+  margin-top: 60px; /* Para separar del botón Volver */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Título principal fuera del recuadro */
+.mainTitle {
+  position: absolute;
+  align-self: center;
+  top: 100px;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: -5px;
+  color: #2f477a;
+}
+
+/* Contenedor de dos columnas */
+.twoColumns {
+  display: flex;
+  gap: 40px; /* Separación entre columnas */
+  flex-wrap: wrap; /* Permite que se acomoden en pantallas más pequeñas */
+}
+
+/* Columnas izquierda y derecha */
+.leftColumn, .rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  flex: 1; /* Igual tamaño de columnas */
+}
+
+/* Label de cada input */
+.label {
+  display: flex;
+  flex-direction: column; /* Para que el input quede debajo del texto */
+  font-size: 14px;
+}
+
+/* Inputs de texto y select de la derecha */
+.rightColumn input,
+.rightColumn select {
+  border: 1px solid;
+  background-color: #e0e0e0;
+  border-color: #ccc;
+  color: #000000;
+  padding: 8px;
+  font-size: 14px;
+  width: 100%; /* Ocupa todo el ancho disponible de la columna */
+  box-sizing: border-box;
+}
+
+/* Contenedor especial para los inputs de Año con flechas */
+.numberInput {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+}
+
+/* Botones de + y - del año */
+.numberInput button {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background-color: #adadad;
+  color:#000000
+}
+
+/* Input del año centrado y con mismo alto que los botones */
+.numberInput input {
+  text-align: center;
+  width: 80px; /* Tamaño exacto para ingresar el año */
+  margin: 0 5px;
+  padding: 8px 0;
+  font-size: 14px;
+  border: 1px solid;
+  background-color: #e0e0e0;
+  border-color: #ccc;
+  color: #000000;
+  border-radius: 3px;
+}
+
+/* Inputs de la izquierda (Año, Periodo, Departamento, Total Docentes) */
+.leftColumn input,
+.leftColumn select {
+  padding: 8px;
+  font-size: 14px;
+  width: auto; /* Ajusta al contenido necesario */
+  min-width: 120px;
+  border: 1px solid #ccc;
+  background-color: #e0e0e0;
+  color:#000000
+}
+
+/* Botones Limpiar y Guardar al final */
+.buttonRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.buttonRow button {
+  padding: 10px 20px;
+  font-size: 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #2f477a;
+  color: white;
+}
+
+.buttonRow button:hover {
+  background-color: #466ab8;
+}

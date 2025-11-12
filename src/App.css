@@ -1,0 +1,24 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/*Logo*/
+.app-logo {
+  position: absolute; /*Permite modificarlo precisamente*/
+  top: 130px;          /* 20px de separacion del tope superior*/
+  left: 100px;         /* 20px de separacion del tope izquierdo*/
+  width: 350px;        /* Mantiene un ancho automático */
+  height: auto;       /* Mantiene un alto automático */
+}
+
+.cabecera {
+  position: absolute; /*Fijado en la parte superior*/
+  top: 0; /*Pegado al limite superior*/
+  left: 0; /*Pegado al limite izquierdo*/
+  width: 100%; /* Que ocupe todo el ancho */
+  height: 50px;
+  background-color: #2f477a;
+}
