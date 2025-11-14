@@ -1,45 +1,48 @@
 import React, { useState } from "react";
-import styles from "./Module3.module.css"; // Importa como CSS Module
+import styles from "./Module3.module.css";
 
-// --- 1. Datos simulados (ACTUALIZADOS con 12 columnas) ---
 const mockTeachers = [
-  {
-    id: 'TNM001', ap: 'Perez', am: 'Gomez', nombres: 'Juan', rfc: 'PEGJ800101ABC', sexo: 'M', depto: 'Sistemas',
-    puesto: 'Profesor', curso: 'IA', capacitacion: 'AP', facilitador: 'Dr. Cartujano', periodo: 'Del 11 al 23 de Noviembre',
-    acreditacion: false
-  },{
-    id: 'TNM002', ap: 'Lopez', am: 'Fernandez', nombres: 'Ana', rfc: 'LOFA900202DEF', sexo: 'F', depto: 'Quimica',
-    puesto: 'Investigador', curso: 'Quimica Organica', capacitacion: 'FD', facilitador: 'Dra. Nogeron',
-    periodo: 'Del 01 al 15 de Octubre', acreditacion: true
-  },{
-    id: 'TNM003', ap: 'Garcia', am: 'Martinez', nombres: 'Luis', rfc: 'GAML850303GHI', sexo: 'M', depto: 'Sistemas',
-    puesto: 'Jefe de Depto', curso: 'IA', capacitacion: 'AP', facilitador: 'Dra. Claudia', periodo: 'Del 11 al 23 de Noviembre',
-    acreditacion: false
-  },
+  { id: 'TNM001', ap: 'Perez', am: 'Gomez', nombres: 'Juan', rfc: 'PEGJ800101ABC', sexo: 'M', depto: 'Sistemas Computacionales', puesto: 'Profesor', curso: 'IA', capacitacion: 'AP', facilitador: 'Dr. Cartujano', periodo: 'Del 11 al 23 de Noviembre', acreditacion: false },
+  { id: 'TNM002', ap: 'Lopez', am: 'Fernandez', nombres: 'Ana', rfc: 'LOFA900202DEF', sexo: 'F', depto: 'Química y Bioquímica', puesto: 'Investigador', curso: 'Quimica Organica', capacitacion: 'FD', facilitador: 'Dra. Nogeron', periodo: 'Del 01 al 15 de Octubre', acreditacion: true },
+  { id: 'TNM003', ap: 'Garcia', am: 'Martinez', nombres: 'Luis', rfc: 'GAML850303GHI', sexo: 'M', depto: 'Metal Mecánica', puesto: 'Jefe de Depto', curso: 'Creación y modificación de PCBs', capacitacion: 'AP', facilitador: 'Dra. Claudia', periodo: 'Del 11 al 23 de Noviembre', acreditacion: false },
 ];
+
+//Obtenemos la lista de departamentos únicos de los datos ---
+// Usamos Set para asegurar que no haya duplicados
+const allDepartments = [...new Set(mockTeachers.map(teacher => teacher.depto))];
 
 export default function Module3({ onBack }) {
   // --- Estados ---
   const [teachers, setTeachers] = useState(mockTeachers);
   const [filter, setFilter] = useState("");
+  // --- NUEVO: Estado para el filtro de departamento ---
+  const [departmentFilter, setDepartmentFilter] = useState(""); // "" significa "Todos"
   const [unsaved, setUnsaved] = useState(false);
   const [message, setMessage] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
 
-  // --- 2. Lógica de Filtro (ACTUALIZADA) ---
-  const filtered = teachers.filter((t) => {
-    const term = filter.toLowerCase();
-    return (
-      t.ap.toLowerCase().includes(term) ||
-      t.am.toLowerCase().includes(term) ||
-      t.nombres.toLowerCase().includes(term) ||
-      t.rfc.toLowerCase().includes(term) ||
-      t.curso.toLowerCase().includes(term)
-    );
-  });
+  // --- MODIFICADO: Lógica de Filtro Encadenado ---
+  const filtered = teachers
+    .filter((t) => {
+      // 1. Primer filtro: Departamento
+      // Si el filtro de depto está vacío (""), devolvemos 'true' (no filtrar)
+      // Si no, solo devolvemos 'true' si el depto del profe coincide
+      return departmentFilter === "" || t.depto === departmentFilter;
+    })
+    .filter((t) => {
+      // 2. Segundo filtro: Texto
+      const term = filter.toLowerCase();
+      if (term === "") return true; // Si no hay texto, no filtrar
+      return (
+        t.ap.toLowerCase().includes(term) ||
+        t.am.toLowerCase().includes(term) ||
+        t.nombres.toLowerCase().includes(term) ||
+        t.rfc.toLowerCase().includes(term) ||
+        t.curso.toLowerCase().includes(term)
+      );
+    });
 
-  // --- Manejador de Checkbox (Actualizado a 'acreditacion') ---
   function handleAccreditationChange(id, checked) {
     const updated = teachers.map((t) =>
       t.id === id ? { ...t, acreditacion: checked } : t
@@ -48,7 +51,7 @@ export default function Module3({ onBack }) {
     setUnsaved(true);
   }
 
-  // --- Funciones Simuladas (Sin cambios) ---
+  // --- Funciones Simuladas ---
   function handleSave() {
     setUnsaved(false);
     setMessage("✅ Cambios guardados (simulado)");
@@ -78,7 +81,6 @@ export default function Module3({ onBack }) {
     new Set(teachers.flatMap((t) => t.curso || []))
   );
 
-  // --- Renderizado (ACTUALIZADO CON NUEVA ESTRUCTURA) ---
   return (
     <div className={styles.container}>
       
@@ -86,16 +88,15 @@ export default function Module3({ onBack }) {
         ← Volver
       </button>
 
-      {/* Título fuera del contenedor principal */}
       <h2 className={styles.title}>
         Módulo de Visualización y Acreditación Docente
       </h2>
 
-      {/* --- 3. NUEVO CONTENEDOR CON SOMBRA --- */}
       <div className={styles.mainContentBox}>
 
         {message && <div className={styles.message}>{message}</div>}
 
+        {/* --- Barra de búsqueda ahora tiene el select --- */}
         <div className={styles.searchBar}>
           <input
             type="text"
@@ -103,12 +104,21 @@ export default function Module3({ onBack }) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
+          {/* --- Lista desplegable de departamentos --- */}
+          <select 
+            className={styles.departmentSelect}
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+          >
+            <option value="">Todos los departamentos</option>
+            {allDepartments.map(depto => (
+              <option key={depto} value={depto}>{depto}</option>
+            ))}
+          </select>
         </div>
 
-        {/* --- 4. NUEVO WRAPPER PARA SCROLL DE TABLA --- */}
         <div className={styles.tableWrap}>
           <table className={styles.table}>
-            {/* Cabecera de tabla ACTUALIZADA */}
             <thead>
               <tr>
                 <th>Apellido Paterno</th>
@@ -116,7 +126,6 @@ export default function Module3({ onBack }) {
                 <th>Nombres</th>
                 <th>RFC</th>
                 <th>Sexo</th>
-                <th>Departamento</th>
                 <th>Puesto</th>
                 <th>Nombre del Curso</th>
                 <th>Capacitación</th>
@@ -125,11 +134,11 @@ export default function Module3({ onBack }) {
                 <th>Acreditación</th>
               </tr>
             </thead>
-            {/* Cuerpo de tabla ACTUALIZADO */}
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className={styles.emptyTable}>
+                  {/* --- colSpan de 12 a 11 --- */}
+                  <td colSpan="11" className={styles.emptyTable}>
                     No hay coincidencias
                   </td>
                 </tr>
@@ -141,7 +150,6 @@ export default function Module3({ onBack }) {
                     <td>{t.nombres}</td>
                     <td>{t.rfc}</td>
                     <td>{t.sexo}</td>
-                    <td>{t.depto}</td>
                     <td>{t.puesto}</td>
                     <td>{t.curso}</td>
                     <td>{t.capacitacion}</td>
