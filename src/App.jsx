@@ -1,38 +1,89 @@
-import { useEffect, useState } from 'react'; // Importamos useState para manejar el estado del login
-import LoginPage from './components/LoginPage'; // Importamos la página de Login
-import Principal from './components/Principal'; // Importamos la página Principal
+import { useEffect, useState } from 'react';
+import LoginPage from './components/LoginPage';
+import Principal from './components/Principal';
 import './App.css';
 
-function App() {
-  // Definicion del estado para manejar si el usuario está logueado o no
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+// --- 1. IMPORTAR TOASTIFY ---
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // <-- ¡Muy importante! Importa el CSS
 
-  // Efecto para cambiar el fondo dependiendo del estado de login
+// Importaciones de Firebase (como las tenías)
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+
+// Pega tu configuración de Firebase aquí
+const firebaseConfig = {
+  apiKey: "AIzaSyC0IMY8nEoBfCXZyNQ1FC8AvySCKXj4r1w",
+  authDomain: "sistema-cursos-tecnm.firebaseapp.com",
+  projectId: "sistema-cursos-tecnm",
+  storageBucket: "sistema-cursos-tecnm.firebasestorage.app",
+  messagingSenderId: "613342436422",
+  appId: "1:613342436422:web:b49c221d41cde8610e3e47"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  // Oyente de autenticación (sin cambios)
   useEffect(() => {
-    if (isLoggedIn) {
-      document.body.style.backgroundImage = "none"; // Quitar la imagen de fondo al iniciar sesión
-      document.body.style.backgroundColor = "#ffffff"; // Cambiar el color de fondo a blanco
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Efecto para cambiar el fondo (sin cambios)
+  useEffect(() => {
+    if (user) {
+      document.body.style.backgroundImage = "none";
+      document.body.style.backgroundColor = "#ffffff";
     } else {
       document.body.style.backgroundImage = 'linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)), url("/fondo.jpg")';
-      document.body.style.backgroundColor = ""; // Quitar el color de fondo
+      document.body.style.backgroundColor = "";
     }
-  }, [isLoggedIn]); 
+  }, [user]);
 
-  // Función para actualizar el estado cuando el usuario inicia sesión
-  const handleLogin = () => {
-    setIsLoggedIn(true);
+  // Logout (sin cambios)
+  const handleLogout = () => {
+    signOut(auth).catch((error) => {
+      console.error("Error al cerrar sesión:", error);
+    });
   };
 
-  // Función para actualizar el estado cuando el usuario cierra sesión
-  const handleLogout = () => {
-    setIsLoggedIn(false);
+  if (loadingAuth) {
+    return <div>Cargando...</div>;
   }
 
-  // La logica muestra la página de login, o la página principal. Dependiendo del estado de "isLoggedIn"
   return (
     <div className="App">
+      
+      {/* --- 2. AÑADIR EL CONTENEDOR DE TOASTS --- */}
+      {/* Puedes configurarlo (ej. position="top-center") */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+      
+      {/* La cabecera global (como la tenías) */}
       <div className="cabecera"></div>
-      {isLoggedIn ? <Principal onLogout={handleLogout}/> : <LoginPage onLogin={handleLogin} />} 
+
+      {/* Lógica condicional (sin cambios) */}
+      {user ? <Principal onLogout={handleLogout} /> : <LoginPage />}
+    
     </div>
   );
 }
