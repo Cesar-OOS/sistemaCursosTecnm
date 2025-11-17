@@ -13,39 +13,53 @@ export default function Module3({ onBack, refreshTrigger }) {
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
 
-  // Recargar datos cada vez que refreshTrigger cambie
+  // ✅ Carga de datos
   useEffect(() => {
     loadData();
   }, [refreshTrigger]);
 
   const loadData = async () => {
     try {
+      // Obtener departamentos únicos
       const deptRes = await fetch(`${API_URL}/module3/departments`);
       const deptos = await deptRes.json();
-      setAllDepartments(deptos);
+      setAllDepartments(Array.isArray(deptos) ? deptos : []);
 
+      // Obtener docentes
       const dataRes = await fetch(`${API_URL}/module3/data`);
       const data = await dataRes.json();
 
-      const dataWithAccred = data.map(t => ({
-        ...t,
-        acreditacion: t.acreditacion === 1
-      }));
+      const dataWithAccred = Array.isArray(data)
+        ? data.map((t) => ({
+            ...t,
+            departamento_id: t.departamento_id?.trim() || "",
+            acreditacion: t.acreditacion === 1,
+          }))
+        : [];
 
       setTeachers(dataWithAccred);
     } catch (err) {
       console.error(err);
-      setMessage(`❌ ${err.message}`);
+      setMessage(`❌ Error del servidor: ${err.message}`);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
-  // Guardar cambios de acreditación
+  // ✅ Cambiar acreditación
+  const handleAccreditationChange = (id, value) => {
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, acreditacion: value } : t))
+    );
+    setUnsaved(true);
+  };
+
+  // ✅ Guardar cambios
   const handleSave = async () => {
     try {
       const response = await fetch(`${API_URL}/module3/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(teachers)
+        body: JSON.stringify(teachers),
       });
 
       if (!response.ok) throw new Error("No se pudieron guardar los cambios");
@@ -69,33 +83,25 @@ export default function Module3({ onBack, refreshTrigger }) {
     onBack();
   };
 
-  // Manejar cambio de acreditación
-  const handleAccreditationChange = (id, value) => {
-    setTeachers(prev =>
-      prev.map(t => t.id === id ? { ...t, acreditacion: value } : t)
+  // Cursos disponibles
+  const allCourses = Array.from(new Set(teachers.map((t) => t.curso).filter(Boolean)));
+
+  // Filtrado de docentes
+  const filtered = teachers.filter((t) => {
+    const matchFilter = [t.ap, t.am, t.nombres, t.rfc, t.curso].some((f) =>
+      f?.toLowerCase().includes(filter.toLowerCase())
     );
-    setUnsaved(true);
-  };
-
-  const allCourses = Array.from(new Set(teachers.map(t => t.curso).filter(Boolean)));
-
-  // Filtrado de búsqueda y departamento
-  const filtered = teachers.filter(t => {
-    const matchesText = 
-      t.ap.toLowerCase().includes(filter.toLowerCase()) ||
-      t.am.toLowerCase().includes(filter.toLowerCase()) ||
-      t.nombres.toLowerCase().includes(filter.toLowerCase()) ||
-      t.rfc.toLowerCase().includes(filter.toLowerCase()) ||
-      (t.curso || "").toLowerCase().includes(filter.toLowerCase());
-
-    const matchesDept = departmentFilter ? t.departamento_id === departmentFilter : true;
-
-    return matchesText && matchesDept;
+    const matchDept =
+      !departmentFilter ||
+      t.departamento_id?.toLowerCase() === departmentFilter.toLowerCase();
+    return matchFilter && matchDept;
   });
 
   return (
     <div className={styles.container}>
-      <button className={styles.backBtn} onClick={handleBackClick}>← Volver</button>
+      <button className={styles.backBtn} onClick={handleBackClick}>
+        ← Volver
+      </button>
       <h2 className={styles.title}>Módulo de Visualización y Acreditación Docente</h2>
 
       {message && <div className={styles.message}>{message}</div>}
@@ -105,16 +111,18 @@ export default function Module3({ onBack, refreshTrigger }) {
           type="text"
           placeholder="Buscar por Apellido, Nombre, RFC o Curso"
           value={filter}
-          onChange={e => setFilter(e.target.value)}
+          onChange={(e) => setFilter(e.target.value)}
         />
         <select
           className={styles.departmentSelect}
           value={departmentFilter}
-          onChange={e => setDepartmentFilter(e.target.value)}
+          onChange={(e) => setDepartmentFilter(e.target.value)}
         >
           <option value="">Todos los departamentos</option>
           {allDepartments.map((d, idx) => (
-            <option key={idx} value={d}>{d}</option>
+            <option key={idx} value={d}>
+              {d}
+            </option>
           ))}
         </select>
       </div>
@@ -139,10 +147,12 @@ export default function Module3({ onBack, refreshTrigger }) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="11" className={styles.emptyTable}>Cargando datos o no hay coincidencias...</td>
+                <td colSpan="11" className={styles.emptyTable}>
+                  Cargando datos o no hay coincidencias...
+                </td>
               </tr>
             ) : (
-              filtered.map(t => (
+              filtered.map((t) => (
                 <tr key={t.id}>
                   <td>{t.ap}</td>
                   <td>{t.am}</td>
@@ -158,7 +168,7 @@ export default function Module3({ onBack, refreshTrigger }) {
                     <input
                       type="checkbox"
                       checked={t.acreditacion}
-                      onChange={e => handleAccreditationChange(t.id, e.target.checked)}
+                      onChange={(e) => handleAccreditationChange(t.id, e.target.checked)}
                     />
                   </td>
                 </tr>
@@ -169,7 +179,9 @@ export default function Module3({ onBack, refreshTrigger }) {
       </div>
 
       <div className={styles.buttonGroup}>
-        <button onClick={handleSave} disabled={!unsaved}>Guardar</button>
+        <button onClick={handleSave} disabled={!unsaved}>
+          Guardar
+        </button>
         <button onClick={() => setShowExport(true)}>Exportar Listas de Asistencia</button>
       </div>
 
@@ -179,16 +191,23 @@ export default function Module3({ onBack, refreshTrigger }) {
             <h3>Exportar Listas de Asistencia</h3>
             <select
               value={selectedCourse}
-              onChange={e => setSelectedCourse(e.target.value)}
+              onChange={(e) => setSelectedCourse(e.target.value)}
             >
               <option value="">-- Selecciona un curso --</option>
               {allCourses.map((c, idx) => (
-                <option key={idx} value={c}>{c}</option>
+                <option key={idx} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
 
             <div className={styles.modalButtons}>
-              <button onClick={() => setShowExport(false)} disabled={!selectedCourse}>Exportar Curso</button>
+              <button
+                onClick={() => setShowExport(false)}
+                disabled={!selectedCourse}
+              >
+                Exportar Curso
+              </button>
               <button onClick={() => setShowExport(false)}>Exportar Todo</button>
               <button onClick={() => setShowExport(false)}>Cancelar</button>
             </div>

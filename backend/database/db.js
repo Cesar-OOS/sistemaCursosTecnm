@@ -8,25 +8,41 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, "database.db");
 const db = new Database(dbPath);
 
-// Crear tabla si no existe
+// Crear tablas si no existen
 db.prepare(`
-  CREATE TABLE IF NOT EXISTS docentes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ap TEXT,
-    am TEXT,
-    nombres TEXT,
-    rfc TEXT,
-    sexo TEXT,
-    departamento_id TEXT,
-    puesto TEXT,
-    curso TEXT,
-    capacitacion TEXT,
-    facilitador TEXT,
-    periodo TEXT,
-    acreditacion INTEGER
-  )
+CREATE TABLE IF NOT EXISTS docentes (
+  id TEXT PRIMARY KEY,
+  ap TEXT,
+  am TEXT,
+  nombres TEXT,
+  rfc TEXT,
+  sexo TEXT,
+  puesto TEXT,
+  depto_adscrito TEXT
+)
 `).run();
 
-console.log("🟢 Tabla 'docentes' lista en la base de datos");
+db.prepare(`
+CREATE TABLE IF NOT EXISTS participaciones (
+  participacion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  docente_id TEXT,
+  curso TEXT,
+  tipo_capacitacion TEXT,
+  facilitador TEXT,
+  periodo TEXT,
+  acreditacion INTEGER,
+  FOREIGN KEY(docente_id) REFERENCES docentes(id)
+)
+`).run();
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS adscripciones (
+  docente_id TEXT,
+  departamento TEXT,
+  FOREIGN KEY(docente_id) REFERENCES docentes(id)
+)
+`).run();
+
+console.log("🟢 Tablas listas en la base de datos");
 
 export default db;

@@ -83,7 +83,7 @@ const ExcelFiles = ({ onBack, onUploadComplete }) => {
 
       // Limpiar archivos seleccionados
       setSelectedFiles({});
-      onUploadComplete?.(); // Llamar a Module3 para actualizar la lista automáticamente
+      onUploadComplete?.(); // 🔹 Actualiza Module3 automáticamente
     } catch (error) {
       console.error("Error al subir archivo:", error);
       alert(`❌ Error al subir los archivos: ${error.message}`);
