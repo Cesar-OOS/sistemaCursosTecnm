@@ -1,4 +1,4 @@
-const db = require('./db');
+import db from './db.js';
 
 // La función initDatabase() que crea las tablas no cambia
 function initDatabase() {
@@ -197,7 +197,7 @@ function seedData() {
   console.log('Insertando 80 capacitaciones...');
   const capacitaciones = [
     { docente_id: 'TNM001', curso_id: 'TNM_125_31_2025_AP', tipo: 'AP', facilitador: 'Dr. Cartujano', periodo: 'Del 11 al 23 de Noviembre', acreditado: 'False' },
-    { docente_id: 'TNM002', curso_id: 'TNM_125_32_2025_AP', tipo: 'FD', facilitador: 'Dra. Noregon', periodo: 'Del 01 al 15 de Diciembre', acreditado: 'True' },
+    { docente_id: 'TNM002', curso_id: 'TNM_125_32_2025_AP', tipo: 'AP', facilitador: 'Dra. Noregon', periodo: 'Del 01 al 15 de Diciembre', acreditado: 'True' },
     { docente_id: 'TNM003', curso_id: 'TNM_125_33_2025_AP', tipo: 'AP', facilitador: 'Dra. Noemi', periodo: 'Del 06 al 17 de Enero', acreditado: 'True' },
     { docente_id: 'TNM004', curso_id: 'TNM_125_34_2025_FD', tipo: 'FD', facilitador: 'Dra. Ana Delia', periodo: 'Del 20 al 30 de Noviembre', acreditado: 'False' },
     { docente_id: 'TNM005', curso_id: 'TNM_125_35_2025_AP', tipo: 'AP', facilitador: 'Dr. Peralta', periodo: 'Del 10 al 21 de Diciembre', acreditado: 'True' },
@@ -207,7 +207,7 @@ function seedData() {
     { docente_id: 'TNM009', curso_id: 'TNM_125_39_2025_AP', tipo: 'AP', facilitador: 'Dr. Tomas Emmanuel', periodo: 'Del 19 al 30 de Enero', acreditado: 'False' },
     { docente_id: 'TNM010', curso_id: 'TNM_125_40_2025_FD', tipo: 'FD', facilitador: 'Dra. Estela', periodo: 'Del 05 al 16 de Diciembre', acreditado: 'True' },
     { docente_id: 'TNM011', curso_id: 'TNM_125_31_2025_AP', tipo: 'AP', facilitador: 'Dr. Rene', periodo: 'Del 11 al 23 de Noviembre', acreditado: 'True' },
-    { docente_id: 'TNM012', curso_id: 'TNM_125_32_2025_AP', tipo: 'FD', facilitador: 'Dr. Gaytan', periodo: 'Del 01 al 15 de Diciembre', acreditado: 'True' },
+    { docente_id: 'TNM012', curso_id: 'TNM_125_32_2025_AP', tipo: 'AP', facilitador: 'Dr. Gaytan', periodo: 'Del 01 al 15 de Diciembre', acreditado: 'True' },
     { docente_id: 'TNM013', curso_id: 'TNM_125_33_2025_AP', tipo: 'AP', facilitador: 'Dra. Sofía Ramos', periodo: 'Del 06 al 17 de Enero', acreditado: 'False' },
     { docente_id: 'TNM014', curso_id: 'TNM_125_34_2025_FD', tipo: 'FD', facilitador: 'Mtro. Edgar Luna', periodo: 'Del 20 al 30 de Noviembre', acreditado: 'True' },
     { docente_id: 'TNM015', curso_id: 'TNM_125_35_2025_AP', tipo: 'AP', facilitador: 'Ing. Daniela Ruiz', periodo: 'Del 10 al 21 de Diciembre', acreditado: 'False' },
@@ -302,7 +302,7 @@ function seedData() {
   console.log('--- Inserción de datos (seed) completada ---');
 }
 
-// Ejecutamos la función
+// Ejecución
 try {
   initDatabase();
 } catch (err) {

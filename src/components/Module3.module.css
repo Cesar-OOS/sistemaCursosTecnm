@@ -13,8 +13,8 @@
 /* === Botón Volver (Estilo unificado) === */
 .backBtn {
   position: absolute;
-  top: -60px;
-  left: -120px;
+  top: -25px;
+  left: -310px;
   padding: 10px 15px;
   background-color: #213547;
   color: white;

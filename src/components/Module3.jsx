@@ -1,72 +1,113 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Asegúrate de importar useEffect
 import styles from "./Module3.module.css";
 
-const mockTeachers = [
-  { id: 'TNM001', ap: 'Perez', am: 'Gomez', nombres: 'Juan', rfc: 'PEGJ800101ABC', sexo: 'M', depto: 'Sistemas Computacionales', puesto: 'Profesor', curso: 'IA', capacitacion: 'AP', facilitador: 'Dr. Cartujano', periodo: 'Del 11 al 23 de Noviembre', acreditacion: false },
-  { id: 'TNM002', ap: 'Lopez', am: 'Fernandez', nombres: 'Ana', rfc: 'LOFA900202DEF', sexo: 'F', depto: 'Química y Bioquímica', puesto: 'Investigador', curso: 'Quimica Organica', capacitacion: 'FD', facilitador: 'Dra. Nogeron', periodo: 'Del 01 al 15 de Octubre', acreditacion: true },
-  { id: 'TNM003', ap: 'Garcia', am: 'Martinez', nombres: 'Luis', rfc: 'GAML850303GHI', sexo: 'M', depto: 'Metal Mecánica', puesto: 'Jefe de Depto', curso: 'Creación y modificación de PCBs', capacitacion: 'AP', facilitador: 'Dra. Claudia', periodo: 'Del 11 al 23 de Noviembre', acreditacion: false },
-];
-
-//Obtenemos la lista de departamentos únicos de los datos ---
-// Usamos Set para asegurar que no haya duplicados
-const allDepartments = [...new Set(mockTeachers.map(teacher => teacher.depto))];
+// Constante para la URL del backend (el servidor que corre en el puerto 4000)
+const API_URL = "http://localhost:4000/api";
 
 export default function Module3({ onBack }) {
   // --- Estados ---
-  const [teachers, setTeachers] = useState(mockTeachers);
+  const [teachers, setTeachers] = useState([]); // Inicia vacío, se llenará desde la BD
+  const [allDepartments, setAllDepartments] = useState([]); // Inicia vacío
   const [filter, setFilter] = useState("");
-  // --- NUEVO: Estado para el filtro de departamento ---
-  const [departmentFilter, setDepartmentFilter] = useState(""); // "" significa "Todos"
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [unsaved, setUnsaved] = useState(false);
   const [message, setMessage] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
 
-  // --- MODIFICADO: Lógica de Filtro Encadenado ---
+  // --- NUEVO: Cargar datos reales desde el backend al iniciar ---
+  useEffect(() => {
+    loadRealData();
+  }, []);
+
+  const loadRealData = async () => {
+    try {
+      // 1. Pide los departamentos al backend
+      const deptosResponse = await fetch(`${API_URL}/module3/departments`);
+      if (!deptosResponse.ok) throw new Error('Error al cargar departamentos');
+      const deptos = await deptosResponse.json();
+      setAllDepartments(deptos);
+
+      // 2. Pide los datos de la tabla al backend
+      const dataResponse = await fetch(`${API_URL}/module3/data`);
+      if (!dataResponse.ok) throw new Error('Error al cargar datos de la tabla');
+      const data = await dataResponse.json();
+      setTeachers(data);
+      
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+      setMessage(`❌ Error al conectar con el servidor: ${error.message}`);
+    }
+  };
+
+  // --- Lógica de Filtro (Sin cambios, pero ahora filtra datos reales) ---
   const filtered = teachers
     .filter((t) => {
-      // 1. Primer filtro: Departamento
-      // Si el filtro de depto está vacío (""), devolvemos 'true' (no filtrar)
-      // Si no, solo devolvemos 'true' si el depto del profe coincide
       return departmentFilter === "" || t.depto === departmentFilter;
     })
     .filter((t) => {
-      // 2. Segundo filtro: Texto
       const term = filter.toLowerCase();
-      if (term === "") return true; // Si no hay texto, no filtrar
+      if (term === "") return true;
       return (
-        t.ap.toLowerCase().includes(term) ||
-        t.am.toLowerCase().includes(term) ||
-        t.nombres.toLowerCase().includes(term) ||
-        t.rfc.toLowerCase().includes(term) ||
-        t.curso.toLowerCase().includes(term)
+        (t.ap || "").toLowerCase().includes(term) ||
+        (t.am || "").toLowerCase().includes(term) ||
+        (t.nombres || "").toLowerCase().includes(term) ||
+        (t.rfc || "").toLowerCase().includes(term) ||
+        (t.curso || "").toLowerCase().includes(term)
       );
     });
 
+  // --- Manejador de Checkbox (Sin cambios, actualiza estado local) ---
   function handleAccreditationChange(id, checked) {
     const updated = teachers.map((t) =>
       t.id === id ? { ...t, acreditacion: checked } : t
     );
     setTeachers(updated);
-    setUnsaved(true);
+    setUnsaved(true); // Activa el botón "Guardar"
   }
 
-  // --- Funciones Simuladas ---
-  function handleSave() {
-    setUnsaved(false);
-    setMessage("✅ Cambios guardados (simulado)");
+  // --- MODIFICADO: handleSave ahora llama al backend ---
+  async function handleSave() {
+    try {
+      // Envía el array COMPLETO de 'teachers' al backend
+      const response = await fetch(`${API_URL}/module3/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(teachers), // Envía los datos actualizados
+      });
+
+      if (!response.ok) throw new Error('El servidor falló al guardar');
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setUnsaved(false); // Desactiva el botón "Guardar"
+        setMessage("✅ " + result.message);
+      } else {
+        setMessage("❌ " + result.message);
+      }
+    } catch (error) {
+      console.error("Error en handleSave:", error);
+      setMessage(`❌ Error crítico al guardar: ${error.message}`);
+    }
+    
     setTimeout(() => setMessage(""), 3000);
   }
+
+  // --- Funciones de Exportación (Simuladas por ahora) ---
   function handleExportCourse() {
-    setMessage("✅ Exportación de curso (simulada)");
+    setMessage("✅ Exportación de curso iniciada...");
     setShowExport(false);
     setTimeout(() => setMessage(""), 3000);
   }
   function handleExportAll() {
-    setMessage("✅ Exportación completa (simulada)");
+    setMessage("✅ Exportación completa iniciada...");
     setShowExport(false);
     setTimeout(() => setMessage(""), 3000);
   }
+  
   function handleBackClick() {
     if (unsaved) {
       const confirmExit = window.confirm(
@@ -77,6 +118,7 @@ export default function Module3({ onBack }) {
     onBack();
   }
 
+  // Lógica para el modal de exportación (sin cambios)
   const allCourses = Array.from(
     new Set(teachers.flatMap((t) => t.curso || []))
   );
@@ -96,7 +138,6 @@ export default function Module3({ onBack }) {
 
         {message && <div className={styles.message}>{message}</div>}
 
-        {/* --- Barra de búsqueda ahora tiene el select --- */}
         <div className={styles.searchBar}>
           <input
             type="text"
@@ -104,15 +145,15 @@ export default function Module3({ onBack }) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          {/* --- Lista desplegable de departamentos --- */}
           <select 
             className={styles.departmentSelect}
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="">Todos los departamentos</option>
-            {allDepartments.map(depto => (
-              <option key={depto} value={depto}>{depto}</option>
+            {/* Ahora se llena con datos de la BD */}
+            {allDepartments.map((depto, index) => (
+              <option key={index} value={depto}>{depto}</option>
             ))}
           </select>
         </div>
@@ -137,9 +178,8 @@ export default function Module3({ onBack }) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  {/* --- colSpan de 12 a 11 --- */}
                   <td colSpan="11" className={styles.emptyTable}>
-                    No hay coincidencias
+                    Cargando datos o no hay coincidencias...
                   </td>
                 </tr>
               ) : (
@@ -158,7 +198,8 @@ export default function Module3({ onBack }) {
                     <td>
                       <input
                         type="checkbox"
-                        checked={t.acreditacion || false}
+                        // 't.acreditacion' ahora es un booleano (true/false)
+                        checked={t.acreditacion}
                         onChange={(e) =>
                           handleAccreditationChange(t.id, e.target.checked)
                         }
@@ -169,7 +210,7 @@ export default function Module3({ onBack }) {
               )}
             </tbody>
           </table>
-        </div> {/* Fin de .tableWrap */}
+        </div>
 
         <div className={styles.buttonGroup}>
           <button onClick={handleSave} disabled={!unsaved}>
@@ -180,9 +221,9 @@ export default function Module3({ onBack }) {
           </button>
         </div>
         
-      </div> {/* Fin de .mainContentBox */}
+      </div>
 
-      {/* --- Modal --- */}
+      {/* Modal de Exportación (sin cambios) */}
       {showExport && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -192,8 +233,8 @@ export default function Module3({ onBack }) {
               onChange={(e) => setSelectedCourse(e.target.value)}
             >
               <option value="">-- Selecciona un curso --</option>
-              {allCourses.map((c) => (
-                <option key={c} value={c}>
+              {allCourses.map((c, idx) => (
+                <option key={idx} value={c}>
                   {c}
                 </option>
               ))}
