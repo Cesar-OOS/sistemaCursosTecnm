@@ -2,3 +2,11 @@
 node_modules/
 
 package-lock.json
+
+# Ignorar TODOS los archivos de base de datos de SQLite
+*.db
+*.sqlite
+*.db-journal
+
+# Ignorar archivos de configuración local (si los tuvieran)
+.env
