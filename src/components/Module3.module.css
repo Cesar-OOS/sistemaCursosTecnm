@@ -1,23 +1,27 @@
-/* === Contenedor principal (Estilo unificado) === */
+/* ==========================
+   Contenedor principal
+========================== */
 .container {
   width: 95%;
   margin: 0 auto;
   padding: 20px;
-  padding-top: 0px; /* Espacio para el botón de volver */
+  padding-top: 0;
   position: relative;
   box-sizing: border-box;
-  font-family: sans-serif;
-  color: #000000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #000;
 }
 
-/* === Botón Volver (Estilo unificado) === */
+/* ==========================
+   Botón volver
+========================== */
 .backBtn {
   position: absolute;
   top: 15px;
   left: -110px;
   padding: 10px 15px;
   background-color: #213547;
-  color: white;
+  color: #fff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -28,17 +32,20 @@
   background-color: #1976d2;
 }
 
-/* === Título principal === */
+/* ==========================
+   Título principal
+========================== */
 .title {
-  font-size: 24px;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #2f477a;
-  font-size: 1.8rem;
-  margin-bottom: 20px; /* Aumenta espacio con la caja */
+  margin-bottom: 20px;
   text-align: center;
 }
 
-/* --- NUEVA CLASE: Contenedor con sombra --- */
+/* ==========================
+   Caja principal con sombra
+========================== */
 .mainContentBox {
   background-color: #ffffff;
   padding: 20px;
@@ -46,17 +53,18 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* === Contenedor de botones principales === */
+/* ==========================
+   Botones
+========================== */
 .buttonGroup {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 35px;
+  margin-top: 25px;
   justify-content: center;
 }
-
 .buttonGroup button {
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: 1px solid #aaa;
   background-color: #f5f5f5;
   color: #000;
@@ -65,14 +73,16 @@
   transition: all 0.2s;
 }
 .buttonGroup button:hover {
-  background: #e0e0e0;
+  background-color: #e0e0e0;
 }
 .buttonGroup button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* === Mensaje de estado (guardado, error, etc.) === */
+/* ==========================
+   Mensaje de estado
+========================== */
 .message {
   text-align: center;
   padding: 10px;
@@ -80,9 +90,12 @@
   border: 1px solid #6bc46b;
   border-radius: 6px;
   margin-bottom: 15px;
+  font-weight: 500;
 }
 
-/* === Campo de búsqueda === */
+/* ==========================
+   Barra de búsqueda
+========================== */
 .searchBar {
   display: flex;
   gap: 15px;
@@ -90,10 +103,9 @@
   justify-content: center;
   align-items: center;
 }
-
 .searchBar input {
-  flex: 1; /* Le da 3 partes del espacio */
-  padding: 8px 12px;
+  flex: 1;
+  padding: 10px 12px;
   max-width: 600px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -101,11 +113,9 @@
   color: #000;
   font-size: 16px;
 }
-
 .departmentSelect {
-  flex: 3; /* Le da 1 parte del espacio */
-  padding: 8px 12px;
-  max-width: 300px;
+  flex: 0 0 200px;
+  padding: 10px 12px;
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -114,48 +124,73 @@
   cursor: pointer;
 }
 
-/* --- NUEVA CLASE: Wrapper de la tabla para scroll --- */
+/* ==========================
+   Tabla principal
+========================== */
 .tableWrap {
-  max-height: 500px; /* Altura máxima vertical */
-  overflow: auto;    /* Scroll en AMBAS direcciones si es necesario */
+  max-height: 500px;
+  overflow: auto;
   width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
 }
 
-/* === Tabla principal de datos === */
 .table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 14px;
 }
 
 .table th,
 .table td {
-  border: 1px solid #ccc;
-  padding: 10px; /* Más espacio */
+  padding: 10px;
   text-align: left;
-  white-space: nowrap; /* MUY IMPORTANTE: Evita que el texto se parta y fuerza el scroll horizontal */
+  white-space: nowrap;
+  border-bottom: 1px solid #ddd;
+  color: #000;
 }
 
+/* Cabecera de tabla sticky */
 .table th {
-  background: #f0f0f0;
-  position: sticky; /* Fija la cabecera al hacer scroll vertical */
+  background-color: #f0f0f0;
+  position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
 }
 
+/* Filas alternas y hover */
+.table tbody tr:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+.table tbody tr:nth-child(even) {
+  background-color: #ffffff;
+}
+.table tbody tr:hover {
+  background-color: #e6f0ff;
+  transition: background-color 0.2s;
+}
+
+/* Texto para tabla vacía */
 .emptyTable {
   text-align: center;
   font-style: italic;
   color: #666;
-  white-space: normal; /* Permite que este texto sí se parta */
+  white-space: normal;
 }
 
+/* Checkbox centrado */
 .table td input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
   width: 20px;
   height: 20px;
   cursor: pointer;
 }
 
-/* === Modal (Sin cambios) === */
+/* ==========================
+   Modal
+========================== */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -167,18 +202,18 @@
 }
 
 .modalContent {
-  background: white;
+  background-color: #fff;
   padding: 20px;
   border-radius: 10px;
   width: 350px;
   text-align: center;
-  z-index: 11;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .modalButtons {
-  margin-top: 10px;
+  margin-top: 15px;
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
 }
 
@@ -191,16 +226,13 @@
   background-color: #213547;
   transition: background-color 0.2s;
 }
-
 .modalButtons button:hover {
   background-color: #2f477a;
 }
-
 .modalButtons button:last-child {
   background-color: #ccc;
   color: #000;
 }
-
 .modalButtons button:last-child:hover {
   background-color: #b3b3b3;
 }

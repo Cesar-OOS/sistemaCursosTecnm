@@ -22,10 +22,10 @@ export default function Module3({ onBack }) {
 
   // --- Cargar datos reales desde el backend al iniciar ---
   useEffect(() => {
-    loadRealData();
-  }, []);
+    loadData();
+  }, [refreshTrigger]);
 
-  const loadRealData = async () => {
+  const loadData = async () => {
     try {
       // 1. Pide los departamentos
       const deptosResponse = await fetch(`${API_URL}/module3/departments`);
@@ -125,25 +125,53 @@ export default function Module3({ onBack }) {
       if (!confirmExit) return;
     }
     onBack();
-  }
+  };
 
   // Lógica para el modal de exportación
   const allCourses = Array.from(
     new Set(teachers.flatMap((t) => t.curso || []))
   );
 
+  // Filtrado de docentes
+  const filtered = teachers.filter((t) => {
+    const matchFilter = [t.ap, t.am, t.nombres, t.rfc, t.curso].some((f) =>
+      f?.toLowerCase().includes(filter.toLowerCase())
+    );
+    const matchDept =
+      !departmentFilter ||
+      t.departamento_id?.toLowerCase() === departmentFilter.toLowerCase();
+    return matchFilter && matchDept;
+  });
+
   return (
     <div className={styles.container}>
-      
       <button className={styles.backBtn} onClick={handleBackClick}>
         ← Volver
       </button>
+      <h2 className={styles.title}>Módulo de Visualización y Acreditación Docente</h2>
 
-      <h2 className={styles.title}>
-        Módulo de Visualización y Acreditación Docente
-      </h2>
+      {message && <div className={styles.message}>{message}</div>}
 
-      <div className={styles.mainContentBox}>
+      <div className={styles.searchBar}>
+        <input
+          type="text"
+          placeholder="Buscar por Apellido, Nombre, RFC o Curso"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <select
+          className={styles.departmentSelect}
+          value={departmentFilter}
+          onChange={(e) => setDepartmentFilter(e.target.value)}
+        >
+          <option value="">Todos los departamentos</option>
+          {allDepartments.map((d, idx) => (
+            <option key={idx} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </div>
 
         {/* --- ELIMINADO: El div de {message} ya no existe aquí --- */}
 
@@ -170,24 +198,29 @@ export default function Module3({ onBack }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Apellido Paterno</th>
-                <th>Apellido Materno</th>
-                <th>Nombres</th>
-                <th>RFC</th>
-                <th>Sexo</th>
-                <th>Puesto</th>
-                <th>Nombre del Curso</th>
-                <th>Capacitación</th>
-                <th>Nombre del Facilitador</th>
-                <th>Periodo</th>
-                <th>Acreditación</th>
+                <td colSpan="11" className={styles.emptyTable}>
+                  Cargando datos o no hay coincidencias...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="11" className={styles.emptyTable}>
-                    Cargando datos o no hay coincidencias...
+            ) : (
+              filtered.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.ap}</td>
+                  <td>{t.am}</td>
+                  <td>{t.nombres}</td>
+                  <td>{t.rfc}</td>
+                  <td>{t.sexo}</td>
+                  <td>{t.puesto}</td>
+                  <td>{t.curso}</td>
+                  <td>{t.capacitacion}</td>
+                  <td>{t.facilitador}</td>
+                  <td>{t.periodo}</td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={t.acreditacion}
+                      onChange={(e) => handleAccreditationChange(t.id, e.target.checked)}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -219,15 +252,11 @@ export default function Module3({ onBack }) {
           </table>
         </div>
 
-        <div className={styles.buttonGroup}>
-          <button onClick={handleSave} disabled={!unsaved}>
-            Guardar
-          </button>
-          <button onClick={() => setShowExport(true)}>
-            Exportar Listas de Asistencia
-          </button>
-        </div>
-        
+      <div className={styles.buttonGroup}>
+        <button onClick={handleSave} disabled={!unsaved}>
+          Guardar
+        </button>
+        <button onClick={() => setShowExport(true)}>Exportar Listas de Asistencia</button>
       </div>
 
       {/* Modal de Exportación */}
@@ -246,20 +275,20 @@ export default function Module3({ onBack }) {
                 </option>
               ))}
             </select>
+
             <div className={styles.modalButtons}>
               <button
-                onClick={handleExportCourse}
+                onClick={() => setShowExport(false)}
                 disabled={!selectedCourse}
               >
                 Exportar Curso
               </button>
-              <button onClick={handleExportAll}>Exportar Todo</button>
+              <button onClick={() => setShowExport(false)}>Exportar Todo</button>
               <button onClick={() => setShowExport(false)}>Cancelar</button>
             </div>
           </div>
         </div>
       )}
-      
     </div>
   );
 }

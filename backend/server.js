@@ -72,3 +72,9 @@ app.post('/api/module3/update-accreditations', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
+
+// ======================
+// Iniciar servidor
+// ======================
+const PORT = 4000;
+app.listen(PORT, () => console.log(`✅ Servidor corriendo en http://localhost:${PORT}`));
