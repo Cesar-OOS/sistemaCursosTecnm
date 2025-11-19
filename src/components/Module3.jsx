@@ -1,34 +1,39 @@
-import React, { useState, useEffect } from "react"; // Asegúrate de importar useEffect
+import React, { useState, useEffect } from "react"; 
 import styles from "./Module3.module.css";
 
-// Constante para la URL del backend (el servidor que corre en el puerto 4000)
+// --- 1. IMPORTAR TOASTIFY ---
+import { toast } from 'react-toastify';
+
+// Constante para la URL del backend
 const API_URL = "http://localhost:4000/api";
 
 export default function Module3({ onBack }) {
   // --- Estados ---
-  const [teachers, setTeachers] = useState([]); // Inicia vacío, se llenará desde la BD
-  const [allDepartments, setAllDepartments] = useState([]); // Inicia vacío
+  const [teachers, setTeachers] = useState([]); 
+  const [allDepartments, setAllDepartments] = useState([]); 
   const [filter, setFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [unsaved, setUnsaved] = useState(false);
-  const [message, setMessage] = useState("");
+  
+  // --- ELIMINADO: const [message, setMessage] ... (Ya no usamos mensajes en texto plano) ---
+  
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
 
-  // --- NUEVO: Cargar datos reales desde el backend al iniciar ---
+  // --- Cargar datos reales desde el backend al iniciar ---
   useEffect(() => {
     loadRealData();
   }, []);
 
   const loadRealData = async () => {
     try {
-      // 1. Pide los departamentos al backend
+      // 1. Pide los departamentos
       const deptosResponse = await fetch(`${API_URL}/module3/departments`);
       if (!deptosResponse.ok) throw new Error('Error al cargar departamentos');
       const deptos = await deptosResponse.json();
       setAllDepartments(deptos);
 
-      // 2. Pide los datos de la tabla al backend
+      // 2. Pide los datos de la tabla
       const dataResponse = await fetch(`${API_URL}/module3/data`);
       if (!dataResponse.ok) throw new Error('Error al cargar datos de la tabla');
       const data = await dataResponse.json();
@@ -36,11 +41,12 @@ export default function Module3({ onBack }) {
       
     } catch (error) {
       console.error("Error cargando datos:", error);
-      setMessage(`❌ Error al conectar con el servidor: ${error.message}`);
+      // --- TOAST DE ERROR ---
+      toast.error(`Error al conectar con el servidor: ${error.message}`);
     }
   };
 
-  // --- Lógica de Filtro (Sin cambios, pero ahora filtra datos reales) ---
+  // --- Lógica de Filtro ---
   const filtered = teachers
     .filter((t) => {
       return departmentFilter === "" || t.depto === departmentFilter;
@@ -57,55 +63,58 @@ export default function Module3({ onBack }) {
       );
     });
 
-  // --- Manejador de Checkbox (Sin cambios, actualiza estado local) ---
+  // --- Manejador de Checkbox ---
   function handleAccreditationChange(id, checked) {
     const updated = teachers.map((t) =>
       t.id === id ? { ...t, acreditacion: checked } : t
     );
     setTeachers(updated);
-    setUnsaved(true); // Activa el botón "Guardar"
+    setUnsaved(true); 
   }
 
-  // --- MODIFICADO: handleSave ahora llama al backend ---
+  // --- GUARDAR CON TOASTIFY ---
   async function handleSave() {
     try {
-      // Envía el array COMPLETO de 'teachers' al backend
-      const response = await fetch(`${API_URL}/module3/save`, {
+      const response = await fetch(`${API_URL}/module3/update-accreditations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(teachers), // Envía los datos actualizados
+        body: JSON.stringify(teachers),
       });
 
-      if (!response.ok) throw new Error('El servidor falló al guardar');
-
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || `Error HTTP: ${response.status}`);
+      }
       
       if (result.success) {
-        setUnsaved(false); // Desactiva el botón "Guardar"
-        setMessage("✅ " + result.message);
+        setUnsaved(false); 
+        // --- TOAST DE ÉXITO (Verde) ---
+        toast.success(result.message);
       } else {
-        setMessage("❌ " + result.message);
+        throw new Error(result.message || "El servidor rechazó la operación");
       }
+
     } catch (error) {
       console.error("Error en handleSave:", error);
-      setMessage(`❌ Error crítico al guardar: ${error.message}`);
+      // --- TOAST DE ERROR (Rojo) ---
+      toast.error(error.message);
     }
-    
-    setTimeout(() => setMessage(""), 3000);
   }
 
-  // --- Funciones de Exportación (Simuladas por ahora) ---
+  // --- Funciones de Exportación ---
   function handleExportCourse() {
-    setMessage("✅ Exportación de curso iniciada...");
+    // --- TOAST DE ÉXITO ---
+    toast.success("Exportación de curso iniciada...");
     setShowExport(false);
-    setTimeout(() => setMessage(""), 3000);
   }
+
   function handleExportAll() {
-    setMessage("✅ Exportación completa iniciada...");
+    // --- TOAST DE ÉXITO ---
+    toast.success("Exportación completa iniciada...");
     setShowExport(false);
-    setTimeout(() => setMessage(""), 3000);
   }
   
   function handleBackClick() {
@@ -118,7 +127,7 @@ export default function Module3({ onBack }) {
     onBack();
   }
 
-  // Lógica para el modal de exportación (sin cambios)
+  // Lógica para el modal de exportación
   const allCourses = Array.from(
     new Set(teachers.flatMap((t) => t.curso || []))
   );
@@ -136,7 +145,7 @@ export default function Module3({ onBack }) {
 
       <div className={styles.mainContentBox}>
 
-        {message && <div className={styles.message}>{message}</div>}
+        {/* --- ELIMINADO: El div de {message} ya no existe aquí --- */}
 
         <div className={styles.searchBar}>
           <input
@@ -151,7 +160,6 @@ export default function Module3({ onBack }) {
             onChange={(e) => setDepartmentFilter(e.target.value)}
           >
             <option value="">Todos los departamentos</option>
-            {/* Ahora se llena con datos de la BD */}
             {allDepartments.map((depto, index) => (
               <option key={index} value={depto}>{depto}</option>
             ))}
@@ -198,7 +206,6 @@ export default function Module3({ onBack }) {
                     <td>
                       <input
                         type="checkbox"
-                        // 't.acreditacion' ahora es un booleano (true/false)
                         checked={t.acreditacion}
                         onChange={(e) =>
                           handleAccreditationChange(t.id, e.target.checked)
@@ -223,7 +230,7 @@ export default function Module3({ onBack }) {
         
       </div>
 
-      {/* Modal de Exportación (sin cambios) */}
+      {/* Modal de Exportación */}
       {showExport && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>

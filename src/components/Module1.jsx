@@ -1,133 +1,140 @@
-// Importa React y el hook useState para manejar el estado dentro del componente
 import React, { useState } from "react";
-
-// Importa los estilos CSS específicos del componente
 import styles from './Module1.module.css';
 
-// Define el componente funcional ExcelFiles que recibe la función onBack como prop
+// --- 1. IMPORTAR TOASTIFY ---
+import { toast } from 'react-toastify';
+
 const ExcelFiles = ({ onBack }) => {
 
-  // Define una lista inicial con tres grupos (o secciones) de opciones
-  // Cada grupo contiene un id, un nombre (que se muestra como título) y sus opciones
-  // La propiedad 'uploaded' guarda los archivos subidos por cada opción
   const initialLists = [
-    { id: 1, name: "Elige un Programa Institucional:", options: ["Programa Institucional"], uploaded: {} },
-    { id: 2, name: "Elige un listado a importar:", options: [
-      "Listado de pre-registro a Cursos de Capacitación",
-      "Listado de Etiquetas de Cursos de Capacitación", 
-      "Listado de Detección de Necesidades", 
-      "Listado de Docentes Adscritos"
+    { id: 1, name: "Paso 1: Configuración de Cursos", options: ["Programa Institucional"], uploaded: {} },
+    { id: 2, name: "Paso 2: Importar Docentes", options: [
+      "Listado de Docentes Adscritos", 
+      "Listado de pre-registro a Cursos de Capacitación" 
     ], uploaded: {} },
-    { id: 3, name: "Elige un formato a importar:", options: [
-      "Formato de Hojas Membretadas para Reconocimientos", 
-      "Formato de Lista de Asistencia", 
-      "Formato de Reporte para Docentes Capacitados"
+    { id: 3, name: "Paso 3: Evaluaciones y Resultados", options: [
+      "Listado de Detección de Necesidades", 
+      "Formato de Lista de Asistencia" 
     ], uploaded: {} },
   ];
 
-  // Estado principal que almacena la lista completa (con sus opciones y archivos)
   const [lists, setLists] = useState(initialLists);
-
-  // Estado que guarda los nombres de los archivos seleccionados por cada opción
   const [selectedFiles, setSelectedFiles] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // Función que se ejecuta cuando el usuario selecciona un archivo Excel
   const handleFileChange = (e, listId, option) => {
-    const file = e.target.files[0]; // Obtiene el primer archivo seleccionado
-    if (!file) return; // Si no se selecciona archivo, no hace nada
-
-    // Actualiza el estado 'selectedFiles' agregando el nuevo archivo seleccionado
-    setSelectedFiles(prev => ({
-      ...prev, // Mantiene los archivos previos
-      [`${listId}-${option}`]: file.name // Guarda el nombre con una clave única por lista y opción
-    }));
-
-    // Marca en la lista correspondiente que esa opción ya tiene un archivo cargado
-    setLists(prev =>
-      prev.map(list =>
-        list.id === listId
-          ? { ...list, uploaded: { ...list.uploaded, [option]: true } } // Marca como “subido”
-          : list // Si no coincide, deja la lista igual
-      )
-    );
+    const file = e.target.files[0];
+    if (!file) return;
+    setSelectedFiles(prev => ({ ...prev, [`${listId}-${option}`]: file }));
+    setLists(prev => prev.map(l => l.id === listId ? { ...l, uploaded: { ...l.uploaded, [option]: true } } : l));
   };
 
-  // Renderizado del componente
-  return (
-    <div className={styles.uploaderScreen}> {/* Contenedor general de la interfaz */}
+  const handleImport = async () => {
+    // Validación inicial con Toast
+    if (Object.keys(selectedFiles).length === 0) {
+      toast.warn("No has seleccionado ningún archivo para importar.");
+      return;
+    }
+
+    setLoading(true);
+    
+    // Eliminamos la variable 'results' y el alert final.
+    // Ahora notificamos conforme avanza el proceso.
+
+    try {
+      for (const key in selectedFiles) {
+        const file = selectedFiles[key];
+        // Extraer nombre real de la opción
+        const optionName = key.substring(key.indexOf('-') + 1);
+        
+        const formData = new FormData();
+        formData.append('file', file);
+
+        let url = '';
+        // Normalizamos a minúsculas para comparación segura
+        const nameLower = optionName.toLowerCase();
+
+        // MAPEO DE RUTAS
+        if (nameLower.includes("programa institucional")) {
+            url = 'http://localhost:4000/api/module1/catalogo';
+        } 
+        else if (nameLower.includes("docentes adscritos")) {
+            url = 'http://localhost:4000/api/module1/adscritos';
+        } 
+        else if (nameLower.includes("pre-registro")) {
+            url = 'http://localhost:4000/api/module1/preregistro';
+        } 
+        else if (nameLower.includes("detección de necesidades") || nameLower.includes("asistencia")) {
+            url = 'http://localhost:4000/api/module1/resultados';
+        }
+        
+        if (url) {
+          try {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                // --- ÉXITO (Verde) ---
+                toast.success(`${optionName}: ${data.message}`, { autoClose: 5000 });
+            } else {
+                // --- ERROR DEL BACKEND (Rojo) ---
+                toast.error(`${optionName}: ${data.error}`, { autoClose: 8000 });
+            }
+
+          } catch (e) {
+            // --- ERROR DE RED (Rojo) ---
+            console.error(e);
+            toast.error(`${optionName}: Error de conexión con el servidor`);
+          }
+        } else {
+            // Caso raro: Archivo seleccionado sin ruta definida
+            toast.info(`${optionName}: No hay ruta configurada para este archivo.`);
+        }
+      }
       
-      {/* Botón para volver a la pantalla anterior */}
-      <button className={styles.backBtn} onClick={onBack}>← Volver</button>
+    } catch (error) {
+        console.error(error);
+        toast.error("Ocurrió un error inesperado en el proceso.");
+    } finally {
+        setLoading(false);
+    }
+  };
 
-      {/* Título principal, ubicado fuera del recuadro blanco */}
-      <h1 className={styles.mainTitle}>Importar archivos</h1>
-
-      {/* Recuadro principal blanco que contiene todas las tarjetas */}
-      <div className={styles.cardsContainer}>
-        {/* Recorre la lista de secciones definidas en initialLists */}
+  return (
+    <div className={styles.uploaderScreen}>
+       <button className={styles.backBtn} onClick={onBack} disabled={loading}>← Volver</button>
+       <h1 className={styles.mainTitle}>Importación de Archivos</h1>
+       <div className={styles.cardsContainer}>
         {lists.map(list => (
-          // Cada grupo se representa como una tarjeta
           <div key={list.id} className={styles.listCard}>
-            
-            {/* Título de cada tarjeta (por ejemplo: “Elige un formato a importar”) */}
             <h2>{list.name}</h2>
-            
-            {/* Contenedor que organiza el select (izquierda) y la lista de archivos (derecha) */}
             <div className={styles.selectRow}>
-              
-              {/* Menú desplegable que muestra las opciones disponibles */}
-              <select
-                defaultValue="" // Valor inicial vacío
-                onChange={(e) => { // Al cambiar el valor del select
-                  const option = e.target.value; // Obtiene la opción seleccionada
-                  const input = document.getElementById(`file-input-${list.id}`); // Busca el input oculto asociado
-                  input.dataset.option = option; // Guarda la opción elegida dentro del input
-                  input.click(); // Simula un clic para abrir el selector de archivos
-                  e.target.value = ""; // Restablece el valor del select
-                }}
-              >
-                {/* Opción inicial deshabilitada (mensaje guía) */}
-                <option value="" disabled>Selecciona una opción</option>
-
-                {/* Genera dinámicamente las opciones del select */}
-                {list.options.map(opt => (
-                  <option key={opt} value={opt}>
-                    {/* Muestra el nombre y un ✔️ si ya se subió un archivo */}
-                    {opt} {list.uploaded[opt] ? "✔️" : ""}
-                  </option>
-                ))}
+              <select defaultValue="" disabled={loading} onChange={(e) => {
+                  const opt = e.target.value;
+                  const input = document.getElementById(`file-${list.id}`);
+                  input.dataset.opt = opt;
+                  input.click();
+                  e.target.value = "";
+              }}>
+                <option value="" disabled>Seleccionar...</option>
+                {list.options.map(o => <option key={o} value={o}>{o} {list.uploaded[o]?"✔️":""}</option>)}
               </select>
-
-              {/* Lista vertical con los nombres de los archivos subidos */}
               <ul className={styles.fileList}>
-                {/* Recorre las opciones que tienen archivos cargados */}
-                {Object.entries(list.uploaded).map(([opt, uploaded]) =>
-                  uploaded 
-                    ? <li key={opt}>{opt}: {selectedFiles[`${list.id}-${opt}`]}</li> // Muestra el nombre del archivo
-                    : null // Si no hay archivo subido, no muestra nada
-                )}
+                 {Object.keys(list.uploaded).map(o => list.uploaded[o] && <li key={o}>{o}: {selectedFiles[`${list.id}-${o}`]?.name}</li>)}
               </ul>
-
-              {/* Input oculto para cargar los archivos Excel */}
-              <input
-                type="file" // Tipo archivo
-                id={`file-input-${list.id}`} // ID único para cada lista
-                accept=".xlsx,.xls" // Solo permite archivos Excel
-                style={{ display: "none" }} // Oculto al usuario
-                onChange={(e) => handleFileChange(e, list.id, e.target.dataset.option)} // Ejecuta la función al cargar un archivo
-              />
+              <input type="file" id={`file-${list.id}`} style={{display:'none'}} 
+                onChange={(e) => handleFileChange(e, list.id, e.target.dataset.opt)} accept=".xlsx,.xls,.csv"/>
             </div>
           </div>
         ))}
-      </div>
-      {/* Contenedor para el botón de importación */}
-        <div className={styles.buttonContainer}>
-          {/* Botón que en el futuro puede ejecutar una acción para importar los archivos */}
-          <button className={styles.importBtn}>Importar Archivos</button>
-        </div>
+       </div>
+       <div className={styles.buttonContainer}>
+          <button className={styles.importBtn} onClick={handleImport} disabled={loading}>
+            {loading ? "Procesando..." : "Iniciar Importación"}
+          </button>
+       </div>
     </div>
   );
 };
 
-// Exporta el componente para poder usarlo en otras partes del proyecto
 export default ExcelFiles;

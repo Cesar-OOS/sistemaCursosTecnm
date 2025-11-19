@@ -1,54 +1,74 @@
 import express from 'express';
 import cors from 'cors';
+import multer from 'multer'; // Necesario para subida de archivos (Módulo 1)
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-// Importa tus funciones de base de datos
-// La ruta sube de 'backend' y baja a 'src/database'
+// --- IMPORTACIÓN DE CONTROLADORES ---
+import Module1Controller from '../src/database/Module1controller.js';
+import Module2Controller from '../src/database/Module2controller.js';
 import { getModule3Data, getDepartmentsList, updateAccreditations } from '../src/database/Module3controller.js';
 
-// --- Configuración del Servidor ---
+// --- CONFIGURACIÓN DEL SERVIDOR ---
 const app = express();
-const PORT = 4000; // Usaremos un puerto diferente al de React (que usa ~5173)
+const PORT = 4000;
+const upload = multer({ dest: 'uploads/' }); // Carpeta temporal para archivos
 
-// --- Middlewares ---
-app.use(cors()); // Permite que React (en otro puerto) haga peticiones
-app.use(express.json()); // Permite al servidor entender el JSON que envía React
+app.use(cors());
+app.use(express.json());
 
-// --- RUTAS (Endpoints) ---
+// ==========================================
+//           RUTAS MÓDULO 1 (IMPORTACIÓN)
+// ==========================================
 
-// 1. Ruta para obtener los datos de la tabla del Módulo 3
+app.post('/api/module1/catalogo', upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({error: "Falta archivo"});
+  res.json(Module1Controller.importarCatalogoCursos(req.file.path));
+});
+
+app.post('/api/module1/adscritos', upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({error: "Falta archivo"});
+  res.json(Module1Controller.importarDocentesAdscritos(req.file.path));
+});
+
+app.post('/api/module1/preregistro', upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({error: "Falta archivo"});
+  res.json(Module1Controller.importarPreRegistro(req.file.path));
+});
+
+app.post('/api/module1/resultados', upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({error: "Falta archivo"});
+  res.json(Module1Controller.importarResultados(req.file.path));
+});
+
+// ==========================================
+//           RUTAS MÓDULO 2 (CONFIGURACIÓN)
+// ==========================================
+
+app.get('/api/module2/settings', (req, res) => {
+  res.json(Module2Controller.getSettings());
+});
+
+app.post('/api/module2/settings', (req, res) => {
+  res.json(Module2Controller.saveSettings(req.body));
+});
+
+// ==========================================
+//           RUTAS MÓDULO 3 (GESTIÓN)
+// ==========================================
+
 app.get('/api/module3/data', (req, res) => {
-  try {
-    const data = getModule3Data();
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  res.json(getModule3Data());
 });
 
-// 2. Ruta para obtener la lista de departamentos
 app.get('/api/module3/departments', (req, res) => {
-  try {
-    const data = getDepartmentsList();
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  res.json(getDepartmentsList());
 });
 
-// 3. Ruta para guardar los cambios de acreditación
-app.post('/api/module3/save', (req, res) => {
-  try {
-    // req.body contiene el array 'teachers' que envió React
-    const result = updateAccreditations(req.body); 
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+app.post('/api/module3/update-accreditations', (req, res) => {
+  res.json(updateAccreditations(req.body));
 });
 
-// --- Iniciar el servidor ---
+// --- INICIAR SERVIDOR ---
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor Backend escuchando en http://localhost:${PORT}`);
+  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
