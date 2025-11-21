@@ -20,7 +20,7 @@
 /* --- Botón Volver --- */
 .backBtn {
   position: absolute;
-  top: 0px;
+  top: -50px;
   left: -220px;
   padding: 10px 15px;
   background-color: #213547;
@@ -187,7 +187,7 @@ select:disabled {
   background-color: #09a309;
 }
 
-.btnModify {
+.btnSecundary {
   background-color: #000000;
   color: white;
   border: none;
@@ -197,7 +197,7 @@ select:disabled {
   font-size: 16px;
   transition: background-color 0.3s;
 }
-.btnModify:hover {
+.btnSecundary:hover {
   background-color: #535553;
 }
 

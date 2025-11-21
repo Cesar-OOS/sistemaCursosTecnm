@@ -179,7 +179,7 @@ export default function Module3({ onBack }) {
                 <th>Nombre del Curso</th>
                 <th>Capacitación</th>
                 <th>Nombre del Facilitador</th>
-                <th>Periodo</th>
+                <th>Fecha</th>
                 <th>Acreditación</th>
               </tr>
             </thead>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Reconocimiento - Plantilla Letter</title>
+<style>
+  /* Tamaño carta exacto: 215mm x 279mm */
+  @page { size: 215mm 279mm; margin: 0; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: #f0f0f0; /* para vista en pantalla */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hoja centrada; usar altura fija para evitar overflow */
+  .page {
+    width: 215mm;
+    height: 279mm;
+    margin: 12px auto;
+    background-image: url("recursos/fondo.jpg");
+    background-size: contain;       /* evita que el fondo sobresalga */
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    padding: 18mm;                  /* márgenes internos seguros */
+    box-sizing: border-box;
+    font-family: "Montserrat", sans-serif;
+    color: #000;
+    overflow: hidden;               /* evita que contenido visible empuje a otra página */
+    page-break-inside: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Encabezado: centrado y sin márgenes negativos */
+  .header-image {
+    display: block;
+    margin: 0 auto 8mm auto;
+    height: 70px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  .content { text-align: center; }
+
+  .institution {
+    color: #595959;
+    font-size: 20px;
+    letter-spacing: 1px;
+    font-weight: 750;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-top: 20mm;
+  }
+
+  .through {
+    margin-top: 4mm;
+    color: #595959;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .otorga {
+    color: #595959;
+    margin-top: 10mm;
+    font-size: 20px;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .title-recognition {
+    color: #595959;
+    margin-top: 14mm;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .hacia {
+    color: #595959;
+    font-size: 30px;
+    margin-top: 10mm;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .nombre-docente {
+    margin-top: 10mm;
+    font-size: 24px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .participacion {
+    color: #595959;
+    font-size: 16px;
+    margin-top: 10mm;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+
+  .curso-placeholder {
+    margin-top: 12mm;
+    font-size: 22px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .fecha-placeholder {
+    color: #595959;
+    margin-top: 8mm;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .horas-placeholder {
+    color: #595959;
+    margin-top: 1mm;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .registro {
+    color: #595959;
+    margin-top: 6mm;
+    font-size: 16px;
+  }
+
+  .registro-placeholder {
+    color: #000000;
+    margin-top: 6mm;
+    font-size: 16px;
+  }
+
+  .director-block {
+    margin-top: 16mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .director-name {
+    margin-top: 4mm;
+    font-size: 18px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .director-title {
+    color: #595959;
+    font-size: 15px;
+    margin-top: 5mm;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .place-date {
+    color: #595959;
+    margin-top: 13mm;
+    font-size: 13px;
+  }
+
+  .date-placeholder {
+    color: #595959;
+    font-size: 13px;
+  }
+
+  /* Pie normativo: tamaño reducido y dentro de la hoja */
+  .footer {
+    position: absolute;
+    width: 140px;
+    text-align: right;
+    right: 18mm;
+    bottom: 7mm;
+    font-size: 7px;
+    text-align: justify;
+    line-height: 1.05;
+  }
+
+  /* Contenedor de logos en el pie, con control de tamaño para evitar overflow */
+  .footer-assets {
+    position: absolute;
+    left: 18mm;
+    right: 18mm;
+    bottom: 30mm; /* queda justo encima del texto legal */
+    pointer-events: none;
+  }
+
+  .footer-image-1{
+    position: relative;
+    bottom: -13mm;
+    max-height: 36px;
+    max-width: 22%;
+    width: auto;
+    height: auto;
+  }
+
+  .footer-image-2, .footer-image-3, .footer-image-4 {
+    position: relative;
+    bottom: -13mm;
+    right: -140mm;
+    max-height: 36px;
+    max-width: 22%;
+    width: auto;
+    height: auto;
+  }
+
+  /* Placeholder styling (si se usa para inyectar datos) */
+  .placeholder { color: #000; font-weight: 700; }
+
+  /* Ajustes de impresión */
+  @media print {
+    html, body { background: none; }
+    .page { box-shadow: none; margin: 0 auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    /* Si por milímetros sigues teniendo una segunda página, descomenta la siguiente línea: */
+    /* .page { transform: scale(0.995); transform-origin: top center; } */
+  }
+</style>
+</head>
+<body>
+  <div class="page" role="document">
+    <div class="content">
+      <div class="header-container">
+        <img src="recursos/tec.jpg" alt="Encabezado del sitio" class="header-image">
+      </div>
+
+      <div class="institution">EL TECNOLÓGICO NACIONAL DE MÉXICO</div>
+      <div class="through">A TRAVÉS DEL INSTITUTO TECNOLÓGICO DE ZACATEPEC</div>
+
+      <div class="otorga">OTORGA EL PRESENTE</div>
+
+      <div class="title-recognition">RECONOCIMIENTO</div>
+
+      <div class="hacia">A</div>
+
+      <div class="nombre-docente">{nombreDocente}</div>
+
+      <div class="participacion">POR SU DESTACADA PARTICIPACIÓN EN EL CURSO:</div>
+
+      <div class="curso-placeholder">{nombreCurso}</div>
+
+      <div class="fechas">
+        <div class="fecha-placeholder">{fechaCurso}</div>
+        <div class="horas-placeholder">{horasCurso}</div>
+      </div>
+
+      <div class="registro">Registro: <span class="registro-placeholder">{codigoCurso}</span></div>
+
+      <div class="director-block">
+        <div class="director-name placeholder">{nombreDirector}</div>
+        <div class="director-title">DIRECTOR</div>
+        <div class="place-date">Zacatepec, Mor. A <span class="date-placeholder">{fecha}</span></div>
+      </div>
+    </div>
+
+    <!-- Logos del pie (dentro de la hoja y con tamaño controlado) -->
+    <div class="footer-assets" aria-hidden="true">
+      <img src="recursos/itz.png" alt="Logo Tec" class="footer-image-1">
+      <img src="recursos/m1.png" alt="img1" class="footer-image-2">
+      <img src="recursos/m2.png" alt="img2" class="footer-image-3">
+      <img src="recursos/m3.png" alt="img3" class="footer-image-4">
+    </div>
+
+    <!-- Pie con la nota normativa -->
+    <div class="footer">
+      La Norma Mexicana NMX-R-025-SCFI, “Igualdad Laboral y No Discriminación”. El número de registro: RPrIL-072 y fecha de inicio: 2017-04-10 y término de la certificación 2021-04-10.
+    </div>
+  </div>
+</body>
+</html>

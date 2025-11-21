@@ -7,8 +7,8 @@ import path from 'path';
 import Module1Controller from '../src/database/Module1controller.js';
 import Module2Controller from '../src/database/Module2controller.js';
 import { getModule3Data, getDepartmentsList, updateAccreditations } from '../src/database/Module3controller.js';
-// NUEVO: Importar controlador del Módulo 4
 import { getModule4TableData, getModule4Stats, exportData } from '../src/database/Module4controller.js';
+import Module5Controller from '../src/database/Module5controller.js';
 
 // --- CONFIGURACIÓN DEL SERVIDOR ---
 const app = express();
@@ -101,6 +101,27 @@ app.post('/api/module4/export', async (req, res) => {
     console.error(e);
     res.status(500).json({ success: false, message: e.message });
   }
+});
+
+// ==========================================
+//        RUTAS MÓDULO 5 (CONSTANCIAS)
+// ==========================================
+
+// Obtener lista de cursos activos (con gente inscrita)
+app.get('/api/module5/courses', (req, res) => {
+  res.json(Module5Controller.getActiveCourses());
+});
+
+// Actualizar detalles del curso (si el usuario los modifica)
+app.post('/api/module5/update', (req, res) => {
+  res.json(Module5Controller.updateCourseDetails(req.body));
+});
+
+// NUEVA RUTA: Generar Constancias Masivas
+app.post('/api/module5/generate', async (req, res) => {
+  // Recibimos { courseId: '...', fechaExpedicion: '...' }
+  const result = await Module5Controller.generateConstancias(req.body.courseId, req.body.fechaExpedicion);
+  res.json(result);
 });
 
 // --- INICIAR SERVIDOR ---
