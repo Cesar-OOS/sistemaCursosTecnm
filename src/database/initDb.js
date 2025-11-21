@@ -1,7 +1,7 @@
 import db from './db.js';
 
 function initDatabase() {
-  console.log('--- Inicializando Base de Datos (Versión Flexible) ---');
+  console.log('--- Inicializando Base de Datos (Estructura Corregida) ---');
 
   // 1. SISTEMA
   db.exec(`
@@ -33,9 +33,6 @@ function initDatabase() {
   deptoInsert.run('DP_GEN', 'SIN ADSCRIPCIÓN');
 
   // 3. DOCENTES
-  // CAMBIO IMPORTANTE: 
-  // - 'sexo' ahora permite NULL (sin CHECK estricto por ahora para evitar errores en carga parcial).
-  // - 'departamento_id' permite NULL.
   db.exec(`
     CREATE TABLE IF NOT EXISTS docentes (
       id_docente TEXT PRIMARY KEY, 
@@ -51,6 +48,7 @@ function initDatabase() {
   `);
 
   // 4. CURSOS
+  // 'periodo' ahora guardará "Enero - Junio" o "Agosto - Diciembre"
   db.exec(`
     CREATE TABLE IF NOT EXISTS cursos (
       clave_curso TEXT PRIMARY KEY,
@@ -59,12 +57,13 @@ function initDatabase() {
       horas INTEGER DEFAULT 30,
       competencias_desarrolladas TEXT,
       facilitador TEXT,
-      periodo TEXT,
+      periodo TEXT, 
       anio_registro INTEGER
     );
   `);
 
   // 5. CAPACITACIONES
+  // CAMBIO: 'periodo_realizacion' ahora es 'fecha_realizacion' (Ej: "Del 15 al 20...")
   db.exec(`
     CREATE TABLE IF NOT EXISTS capacitaciones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +71,7 @@ function initDatabase() {
       curso_id TEXT NOT NULL,
       calificacion REAL DEFAULT 0, 
       acreditado TEXT DEFAULT 'False' CHECK(acreditado IN ('True', 'False')),
-      periodo_realizacion TEXT,
+      fecha_realizacion TEXT, 
       necesidad_detectada TEXT,
       FOREIGN KEY (docente_id) REFERENCES docentes(id_docente),
       FOREIGN KEY (curso_id) REFERENCES cursos(clave_curso),
@@ -80,7 +79,7 @@ function initDatabase() {
     );
   `);
 
-  console.log('--- Base de Datos Lista (Permite campos nulos en Docentes) ---');
+  console.log('--- Base de Datos Lista (Estructura de Fechas Corregida) ---');
 }
 
 initDatabase();

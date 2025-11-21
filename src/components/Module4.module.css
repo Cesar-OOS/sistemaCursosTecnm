@@ -147,10 +147,12 @@ select {
   text-align: left;
   border-bottom: 1px solid #d6d6d6;
   font-weight: 600;
+  color: #000000;
 }
 .dataTable tbody td {
   padding: 12px;
   border-bottom: 1px solid #f0f0f0;
+  color: #000000;
 }
 .emptyRow {
   text-align: center;

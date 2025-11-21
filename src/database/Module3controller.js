@@ -12,7 +12,7 @@ function getModule3Data() {
         c.nombre AS curso, 
         c.tipo AS capacitacion, 
         c.facilitador AS facilitador, 
-        cap.periodo_realizacion AS periodo, 
+        cap.fecha_realizacion AS periodo, -- CAMBIO: Ahora leemos fecha_realizacion
         cap.acreditado
       FROM capacitaciones cap
       JOIN docentes d ON cap.docente_id = d.id_docente

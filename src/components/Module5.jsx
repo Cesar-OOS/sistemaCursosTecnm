@@ -102,18 +102,6 @@ function Module5({ onBack }) {
         </div>
       </div>
 
-      {/* --- Div 5: Formato de Archivo --- */}
-      <div className={styles.rowAlignRight}>
-        <div className={styles.formGroup}>
-          <label>Formato de archivo:</label>
-          <select>
-            <option value="pdf">PDF</option>
-            <option value="word">Word</option>
-            <option value="ambos">Ambos</option>
-          </select>
-        </div>
-      </div>
-
       {/* --- Div 6: Botones de Acción --- */}
       <div className={styles.buttonRow}>
         <button className={styles.btnModify}>Modificar</button>
