@@ -94,16 +94,17 @@ align-self: center;
 /* Botón Examinar centrado */
 .browseBtn {
   padding: 12px 30px; /* Espaciado interno */
-  background-color: #213547; /* Fondo azul oscuro */
+  background-color: #000000; /* Fondo negro */
   color: white; /* Texto blanco */
   border: none; /* Sin borde */
   border-radius: 5px; /* Bordes redondeados */
   cursor: pointer; /* Cambia cursor al pasar sobre el botón */
   font-size: 15px; /* Tamaño de texto */
+  transition: background-color 0.3s;
 }
 
 .browseBtn:hover {
-  background-color: #1976d2; /* Cambio de color al pasar el mouse */
+  background-color: #585757; /* Cambio de color al pasar el mouse */
 }
 
 /* Opciones .ZIP y .RAR centradas */
@@ -124,8 +125,9 @@ align-self: center;
   cursor: pointer;
   background-color: #2f477a;
   color: white;
+  transition: background-color 0.3s;
 }
 
 .acceptBtn:hover {
-  background-color: #466ab8;
+  background-color: #1976d2;
 }

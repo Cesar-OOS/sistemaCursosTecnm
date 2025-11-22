@@ -9,6 +9,7 @@ import Module2Controller from '../src/database/Module2controller.js';
 import { getModule3Data, getDepartmentsList, updateAccreditations } from '../src/database/Module3controller.js';
 import { getModule4TableData, getModule4Stats, exportData } from '../src/database/Module4controller.js';
 import Module5Controller from '../src/database/Module5controller.js';
+import Module6Controller from '../src/database/Module6controller.js';
 
 // --- CONFIGURACIÓN DEL SERVIDOR ---
 const app = express();
@@ -124,6 +125,35 @@ app.post('/api/module5/generate', async (req, res) => {
   res.json(result);
 });
 
+// ==========================================
+//        RUTAS MÓDULO 6 (RESPALDO)
+// ==========================================
+
+// 1. Obtener configuración inicial (ruta por defecto)
+app.get('/api/module6/config', (req, res) => {
+  res.json(Module6Controller.getBackupConfig());
+});
+
+// 2. EXPORTAR (Recibe JSON con path y tipo)
+app.post('/api/module6/export', async (req, res) => {
+  try {
+    const { path, fileType } = req.body;
+    // Si es exportar, el path es una carpeta
+    const result = await Module6Controller.exportDatabase(path, fileType);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// 3. IMPORTAR (Recibe archivo ZIP)
+app.post('/api/module6/import', upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({ success: false, message: "No se subió ningún archivo." });
+  
+  // Pasamos la ruta temporal del archivo subido
+  const result = Module6Controller.importDatabase(req.file.path);
+  res.json(result);
+});
 // --- INICIAR SERVIDOR ---
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
