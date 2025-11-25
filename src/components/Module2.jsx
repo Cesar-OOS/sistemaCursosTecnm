@@ -18,34 +18,24 @@ const ModificacionDatos = ({ onBack }) => {
   const [jefa, setJefa] = useState("");
   const [coordinador, setCoordinador] = useState("");
   
-  const [loading, setLoading] = useState(false);
+  // Estado para la lista dinámica de departamentos
+  const [deptosList, setDeptosList] = useState([]);
 
-  // Array de departamentos
-  const departamentos = [
-    "Ciencias Basicas",
-    "Ciencias Económico Administrativas",
-    "Ciencias de la Tierra",
-    "Ingeniería Industrial",
-    "Metal Mecanica",
-    "Quimica y Bioquimica",
-    "Sistemas Computacionales",
-    "Posgrado",
-    "Departamento de Desarrollo Academico"
-  ];
+  const [loading, setLoading] = useState(false);
 
   // Array de periodos (Ajustado para coincidir con backend)
   const periodos = ["Enero - Junio", "Agosto - Diciembre"];
 
   // --- 1. CARGAR DATOS AL INICIAR ---
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('http://localhost:4000/api/module2/settings');
-        const data = await res.json();
+        // A. Cargar Configuración Actual
+        const resSettings = await fetch('http://localhost:4000/api/module2/settings');
+        const dataSettings = await resSettings.json();
         
-        if (data.success && data.data) {
-          const d = data.data;
-          // Si viene dato del backend lo usamos, si no, valores por defecto
+        if (dataSettings.success && dataSettings.data) {
+          const d = dataSettings.data;
           setYear(d.anio || 2025);
           setPeriod(d.periodo || "Enero - Junio");
           setDepartment(d.departamento_nombre || "");
@@ -54,13 +44,21 @@ const ModificacionDatos = ({ onBack }) => {
           setJefa(d.jefa_nombre || "");
           setCoordinador(d.coordinador_nombre || "");
         }
+
+        // B. Cargar Lista de Departamentos (Reutilizando endpoint del Módulo 3)
+        const resDeptos = await fetch('http://localhost:4000/api/module3/departments');
+        const dataDeptos = await resDeptos.json();
+        
+        if (Array.isArray(dataDeptos)) {
+          setDeptosList(dataDeptos);
+        }
+
       } catch (error) {
-        console.error("Error cargando configuración:", error);
-        // Opcional: Mostrar error de carga discreto
-        // toast.error("No se pudo cargar la configuración inicial");
+        console.error("Error cargando datos:", error);
+        toast.error("Error al conectar con el servidor");
       }
     };
-    fetchSettings();
+    fetchData();
   }, []);
 
   // --- MANEJADORES DE ESTILO ---
@@ -138,8 +136,6 @@ const ModificacionDatos = ({ onBack }) => {
 
   // --- RENDERIZADO ---
   return (
-    // Nota: Usamos styles.container porque en tu CSS original la clase se llama .container
-    // Si tu CSS usa .PageContainer, cámbialo aquí. Basado en el Module2.module.css previo, era .container
     <div className={styles.Pagecontainer}>
       
       <button className={styles.backBtn} onClick={onBack}>← Volver</button>
@@ -174,7 +170,10 @@ const ModificacionDatos = ({ onBack }) => {
               Departamento*
               <select value={department} onChange={e => setDepartment(e.target.value)} required>
                 <option value="">Selecciona un departamento</option>
-                {departamentos.map(d => <option key={d} value={d}>{d}</option>)}
+                {/* MAPEO DINÁMICO DESDE LA BD */}
+                {deptosList.map((d, idx) => (
+                  <option key={idx} value={d}>{d}</option>
+                ))}
               </select>
             </label>
 

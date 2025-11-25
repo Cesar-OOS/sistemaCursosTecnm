@@ -1,39 +1,29 @@
 import React, { useState, useEffect } from "react"; 
 import styles from "./Module3.module.css";
-
-// --- 1. IMPORTAR TOASTIFY ---
 import { toast } from 'react-toastify';
 
-// Constante para la URL del backend
 const API_URL = "http://localhost:4000/api";
 
 export default function Module3({ onBack }) {
-  // --- Estados ---
   const [teachers, setTeachers] = useState([]); 
   const [allDepartments, setAllDepartments] = useState([]); 
   const [filter, setFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [unsaved, setUnsaved] = useState(false);
-  
-  // --- ELIMINADO: const [message, setMessage] ... (Ya no usamos mensajes en texto plano) ---
-  
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
 
-  // --- Cargar datos reales desde el backend al iniciar ---
   useEffect(() => {
     loadRealData();
   }, []);
 
   const loadRealData = async () => {
     try {
-      // 1. Pide los departamentos
       const deptosResponse = await fetch(`${API_URL}/module3/departments`);
       if (!deptosResponse.ok) throw new Error('Error al cargar departamentos');
       const deptos = await deptosResponse.json();
       setAllDepartments(deptos);
 
-      // 2. Pide los datos de la tabla
       const dataResponse = await fetch(`${API_URL}/module3/data`);
       if (!dataResponse.ok) throw new Error('Error al cargar datos de la tabla');
       const data = await dataResponse.json();
@@ -41,12 +31,11 @@ export default function Module3({ onBack }) {
       
     } catch (error) {
       console.error("Error cargando datos:", error);
-      // --- TOAST DE ERROR ---
       toast.error(`Error al conectar con el servidor: ${error.message}`);
     }
   };
 
-  // --- Lógica de Filtro ---
+  // --- Lógica de Filtro Actualizada ---
   const filtered = teachers
     .filter((t) => {
       return departmentFilter === "" || t.depto === departmentFilter;
@@ -54,16 +43,14 @@ export default function Module3({ onBack }) {
     .filter((t) => {
       const term = filter.toLowerCase();
       if (term === "") return true;
+      // CAMBIO: Búsqueda sobre nombre_completo
       return (
-        (t.ap || "").toLowerCase().includes(term) ||
-        (t.am || "").toLowerCase().includes(term) ||
-        (t.nombres || "").toLowerCase().includes(term) ||
+        (t.nombre_completo || "").toLowerCase().includes(term) ||
         (t.rfc || "").toLowerCase().includes(term) ||
         (t.curso || "").toLowerCase().includes(term)
       );
     });
 
-  // --- Manejador de Checkbox ---
   function handleAccreditationChange(id, checked) {
     const updated = teachers.map((t) =>
       t.id === id ? { ...t, acreditacion: checked } : t
@@ -72,7 +59,6 @@ export default function Module3({ onBack }) {
     setUnsaved(true); 
   }
 
-  // --- GUARDAR CON TOASTIFY ---
   async function handleSave() {
     try {
       const response = await fetch(`${API_URL}/module3/update-accreditations`, {
@@ -91,7 +77,6 @@ export default function Module3({ onBack }) {
       
       if (result.success) {
         setUnsaved(false); 
-        // --- TOAST DE ÉXITO (Verde) ---
         toast.success(result.message);
       } else {
         throw new Error(result.message || "El servidor rechazó la operación");
@@ -99,20 +84,16 @@ export default function Module3({ onBack }) {
 
     } catch (error) {
       console.error("Error en handleSave:", error);
-      // --- TOAST DE ERROR (Rojo) ---
       toast.error(error.message);
     }
   }
 
-  // --- Funciones de Exportación ---
   function handleExportCourse() {
-    // --- TOAST DE ÉXITO ---
     toast.success("Exportación de curso iniciada...");
     setShowExport(false);
   }
 
   function handleExportAll() {
-    // --- TOAST DE ÉXITO ---
     toast.success("Exportación completa iniciada...");
     setShowExport(false);
   }
@@ -127,7 +108,6 @@ export default function Module3({ onBack }) {
     onBack();
   }
 
-  // Lógica para el modal de exportación
   const allCourses = Array.from(
     new Set(teachers.flatMap((t) => t.curso || []))
   );
@@ -145,12 +125,10 @@ export default function Module3({ onBack }) {
 
       <div className={styles.mainContentBox}>
 
-        {/* --- ELIMINADO: El div de {message} ya no existe aquí --- */}
-
         <div className={styles.searchBar}>
           <input
             type="text"
-            placeholder="Buscar por Apellido, Nombre, RFC o Curso"
+            placeholder="Buscar por Nombre, RFC o Curso"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -170,9 +148,8 @@ export default function Module3({ onBack }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Apellido Paterno</th>
-                <th>Apellido Materno</th>
-                <th>Nombres</th>
+                {/* CAMBIO: Columnas unificadas */}
+                <th>Nombre del Docente</th>
                 <th>RFC</th>
                 <th>Sexo</th>
                 <th>Puesto</th>
@@ -186,16 +163,15 @@ export default function Module3({ onBack }) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className={styles.emptyTable}>
+                  <td colSpan="9" className={styles.emptyTable}>
                     Cargando datos o no hay coincidencias...
                   </td>
                 </tr>
               ) : (
                 filtered.map((t) => (
                   <tr key={t.id}>
-                    <td>{t.ap}</td>
-                    <td>{t.am}</td>
-                    <td>{t.nombres}</td>
+                    {/* CAMBIO: Campo unificado */}
+                    <td>{t.nombre_completo}</td>
                     <td>{t.rfc}</td>
                     <td>{t.sexo}</td>
                     <td>{t.puesto}</td>
@@ -230,7 +206,6 @@ export default function Module3({ onBack }) {
         
       </div>
 
-      {/* Modal de Exportación */}
       {showExport && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>

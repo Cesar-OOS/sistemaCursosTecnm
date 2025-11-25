@@ -27,7 +27,7 @@ function initDatabase() {
   `);
   
   const deptoInsert = db.prepare("INSERT OR IGNORE INTO departamentos (clave_depto, nombre) VALUES (?, ?)");
-  ['CIENCIAS BÁSICAS', 'SISTEMAS COMPUTACIONALES', 'CIENCIAS DE LA TIERRA', 'INGENIERÍA INDUSTRIAL', 'POSGRADO', 'ADMINISTRATIVO', 'METAL MECÁNICA', 'QUÍMICA Y BIOQUÍMICA'].forEach((d, i) => {
+  ['CIENCIAS BÁSICAS', 'SISTEMAS Y COMPUTACIÓN', 'CIENCIAS DE LA TIERRA', 'INGENIERÍA INDUSTRIAL', 'POSGRADO', 'CIENCIAS ECONÓMICO ADMINISTRATIVO', 'METAL MECÁNICA', 'QUÍMICA Y BIOQUÍMICA'].forEach((d, i) => {
     deptoInsert.run(`DP${String(i+1).padStart(2,'0')}`, d);
   });
   deptoInsert.run('DP_GEN', 'SIN ADSCRIPCIÓN');
@@ -35,14 +35,12 @@ function initDatabase() {
   // 3. DOCENTES
   db.exec(`
     CREATE TABLE IF NOT EXISTS docentes (
-      id_docente TEXT PRIMARY KEY, 
-      rfc TEXT UNIQUE NOT NULL,    
-      ap TEXT NOT NULL,
-      am TEXT,
-      nombres TEXT NOT NULL,
-      sexo TEXT, 
+      id_docente TEXT PRIMARY KEY,
+      rfc TEXT UNIQUE NOT NULL,
+      nombre_completo TEXT NOT NULL,
+      sexo TEXT,
       departamento_id TEXT DEFAULT 'DP_GEN',
-      puesto TEXT DEFAULT 'Docente',
+      puesto TEXT DEFAULT 'Base',
       FOREIGN KEY (departamento_id) REFERENCES departamentos(clave_depto)
     );
   `);

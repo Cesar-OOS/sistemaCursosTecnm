@@ -6,13 +6,15 @@ function getModule3Data() {
     const sql = `
       SELECT 
         cap.id, 
-        d.ap, d.am, d.nombres, d.rfc, d.sexo, 
+        d.nombre_completo, -- CAMBIO: Ahora es un solo campo
+        d.rfc, 
+        d.sexo, 
         dep.nombre AS depto, 
         d.puesto, 
         c.nombre AS curso, 
         c.tipo AS capacitacion, 
         c.facilitador AS facilitador, 
-        cap.fecha_realizacion AS periodo, -- CAMBIO: Ahora leemos fecha_realizacion
+        cap.fecha_realizacion AS periodo, 
         cap.acreditado
       FROM capacitaciones cap
       JOIN docentes d ON cap.docente_id = d.id_docente
@@ -45,12 +47,11 @@ function getDepartmentsList() {
   }
 }
 
-// 3. ACTUALIZAR ACREDITACIONES (CORREGIDO Y ROBUSTO)
+// 3. ACTUALIZAR ACREDITACIONES
 function updateAccreditations(teachersData) {
-  // Validación inicial: Debe ser un array
   if (!Array.isArray(teachersData)) {
     console.error("Error: teachersData no es un array", teachersData);
-    return { success: false, message: "Formato de datos incorrecto (se esperaba una lista)." };
+    return { success: false, message: "Formato de datos incorrecto." };
   }
 
   const updateStmt = db.prepare(`
@@ -62,15 +63,8 @@ function updateAccreditations(teachersData) {
   const transaction = db.transaction((teachers) => {
     let updates = 0;
     for (const teacher of teachers) {
-      // Validamos que el ID exista para no romper la query
-      if (!teacher.id) {
-        console.warn("Fila sin ID omitida:", teacher);
-        continue;
-      }
-
-      // Convertimos el booleano de React al texto 'True'/'False' de SQLite
+      if (!teacher.id) continue;
       const valorDb = teacher.acreditacion ? 'True' : 'False';
-      
       updateStmt.run(valorDb, teacher.id);
       updates++;
     }
@@ -79,11 +73,10 @@ function updateAccreditations(teachersData) {
 
   try {
     const count = transaction(teachersData);
-    console.log(`Se actualizaron ${count} registros de acreditación.`);
+    console.log(`Se actualizaron ${count} registros.`);
     return { success: true, message: "Datos guardados correctamente." };
   } catch (error) {
     console.error("Error DETALLADO al guardar:", error);
-    // AQUÍ ESTÁ LA CLAVE: Devolvemos el error real al frontend para poder leerlo
     return { success: false, message: `Error SQL: ${error.message}` };
   }
 }
