@@ -6,16 +6,13 @@ import { toast } from 'react-toastify';
 
 const ExcelFiles = ({ onBack }) => {
 
+  // CAMBIO 1: Eliminado el Paso 3 (Evaluaciones)
   const initialLists = [
     { id: 1, name: "Paso 1: Configuración de Cursos", options: ["Programa Institucional"], uploaded: {} },
     { id: 2, name: "Paso 2: Importar Docentes", options: [
       "Listado de Docentes Adscritos", 
       "Listado de pre-registro a Cursos de Capacitación" 
-    ], uploaded: {} },
-    { id: 3, name: "Paso 3: Evaluaciones y Resultados", options: [
-      "Listado de Detección de Necesidades", 
-      "Formato de Lista de Asistencia" 
-    ], uploaded: {} },
+    ], uploaded: {} }
   ];
 
   const [lists, setLists] = useState(initialLists);
@@ -29,8 +26,18 @@ const ExcelFiles = ({ onBack }) => {
     setLists(prev => prev.map(l => l.id === listId ? { ...l, uploaded: { ...l.uploaded, [option]: true } } : l));
   };
 
+  // CAMBIO 2: Función para Limpiar / Reiniciar el formulario
+  const handleClean = () => {
+    setSelectedFiles({}); // Vaciar archivos seleccionados
+    setLists(initialLists); // Reiniciar visualmente los selectores (quitar palomitas)
+    
+    // Limpiar inputs de tipo file (hack para permitir seleccionar el mismo archivo de nuevo si se desea)
+    document.querySelectorAll('input[type="file"]').forEach(input => input.value = "");
+    
+    toast.info("Formulario reiniciado. Puedes cargar nuevos archivos.");
+  };
+
   const handleImport = async () => {
-    // Validación inicial con Toast
     if (Object.keys(selectedFiles).length === 0) {
       toast.warn("No has seleccionado ningún archivo para importar.");
       return;
@@ -38,23 +45,17 @@ const ExcelFiles = ({ onBack }) => {
 
     setLoading(true);
     
-    // Eliminamos la variable 'results' y el alert final.
-    // Ahora notificamos conforme avanza el proceso.
-
     try {
       for (const key in selectedFiles) {
         const file = selectedFiles[key];
-        // Extraer nombre real de la opción
         const optionName = key.substring(key.indexOf('-') + 1);
         
         const formData = new FormData();
         formData.append('file', file);
 
         let url = '';
-        // Normalizamos a minúsculas para comparación segura
         const nameLower = optionName.toLowerCase();
 
-        // MAPEO DE RUTAS
         if (nameLower.includes("programa institucional")) {
             url = 'http://localhost:4000/api/module1/catalogo';
         } 
@@ -74,21 +75,17 @@ const ExcelFiles = ({ onBack }) => {
             const data = await res.json();
             
             if (data.success) {
-                // --- ÉXITO (Verde) ---
-                toast.success(` ${optionName}: ${data.message}`, { autoClose: 5000 });
+                toast.success(`✅ ${optionName}: ${data.message}`, { autoClose: 5000 });
             } else {
-                // --- ERROR DEL BACKEND (Rojo) ---
-                toast.error(` ${optionName}: ${data.error}`, { autoClose: 8000 });
+                toast.error(`❌ ${optionName}: ${data.error}`, { autoClose: 8000 });
             }
 
           } catch (e) {
-            // --- ERROR DE RED (Rojo) ---
             console.error(e);
-            toast.error(` ${optionName}: Error de conexión con el servidor`);
+            toast.error(`❌ ${optionName}: Error de conexión con el servidor`);
           }
         } else {
-            // Caso raro: Archivo seleccionado sin ruta definida
-            toast.info(` ${optionName}: No hay ruta configurada para este archivo.`);
+            toast.info(`⚠️ ${optionName}: No hay ruta configurada para este archivo.`);
         }
       }
       
@@ -104,6 +101,7 @@ const ExcelFiles = ({ onBack }) => {
     <div className={styles.uploaderScreen}>
        <button className={styles.backBtn} onClick={onBack} disabled={loading}>← Volver</button>
        <h1 className={styles.mainTitle}>Importación de Archivos</h1>
+       
        <div className={styles.cardsContainer}>
         {lists.map(list => (
           <div key={list.id} className={styles.listCard}>
@@ -128,8 +126,24 @@ const ExcelFiles = ({ onBack }) => {
           </div>
         ))}
        </div>
+       
        <div className={styles.buttonContainer}>
-          <button className={styles.importBtn} onClick={handleImport} disabled={loading}>
+          {/* Botón Limpiar */}
+          <button 
+            className={styles.cleanBtn} // Asegúrate de tener estilos para este botón o usa una clase existente
+            onClick={handleClean}
+            disabled={loading}
+            style={{ marginRight: '15px', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            Limpiar
+          </button>
+
+          <button 
+            className={styles.importBtn} 
+            onClick={handleImport}
+            disabled={loading}
+            style={{ opacity: loading ? 0.6 : 1, cursor: loading ? 'wait' : 'pointer' }}
+          >
             {loading ? "Procesando..." : "Iniciar Importación"}
           </button>
        </div>

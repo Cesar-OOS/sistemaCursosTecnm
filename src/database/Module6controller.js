@@ -121,10 +121,10 @@ export const Module6Controller = {
           }
         }
 
-        // 3. Docentes
+        // 3. Docentes (ACTUALIZADO: usa 'nombre_completo')
         const insertDocente = db.prepare(`
-          INSERT OR IGNORE INTO docentes (id_docente, rfc, ap, am, nombres, sexo, departamento_id, puesto) 
-          VALUES (@id_docente, @rfc, @ap, @am, @nombres, @sexo, @departamento_id, @puesto)
+          INSERT OR IGNORE INTO docentes (id_docente, rfc, nombre_completo, sexo, departamento_id, puesto) 
+          VALUES (@id_docente, @rfc, @nombre_completo, @sexo, @departamento_id, @puesto)
         `);
         if (data.docentes) {
           for (const row of data.docentes) {
@@ -133,20 +133,28 @@ export const Module6Controller = {
           }
         }
 
-        // 4. Capacitaciones
+        // 4. Capacitaciones (ACTUALIZADO: usa 'fecha_realizacion' y 'horario')
         const insertCap = db.prepare(`
-          INSERT OR IGNORE INTO capacitaciones (docente_id, curso_id, calificacion, acreditado, fecha_realizacion, necesidad_detectada) 
-          VALUES (@docente_id, @curso_id, @calificacion, @acreditado, @fecha_realizacion, @necesidad_detectada)
+          INSERT OR IGNORE INTO capacitaciones (docente_id, curso_id, calificacion, acreditado, fecha_realizacion, necesidad_detectada, horario) 
+          VALUES (@docente_id, @curso_id, @calificacion, @acreditado, @fecha_realizacion, @necesidad_detectada, @horario)
         `);
         if (data.capacitaciones) {
           for (const row of data.capacitaciones) {
-            const info = insertCap.run(row);
+            // Aseguramos que el objeto row tenga los campos nuevos, si vienen undefined se pasan como null
+            const info = insertCap.run({
+              docente_id: row.docente_id,
+              curso_id: row.curso_id,
+              calificacion: row.calificacion,
+              acreditado: row.acreditado,
+              fecha_realizacion: row.fecha_realizacion, // Nuevo nombre
+              necesidad_detectada: row.necesidad_detectada,
+              horario: row.horario // Nuevo campo
+            });
             if (info.changes > 0) stats.caps++;
           }
         }
 
         // 5. Sistema (ACTUALIZACIÓN CRÍTICA)
-        // Si el respaldo trae configuración, ACTUALIZAMOS la fila id=1 para que el Módulo 2 muestre los datos importados
         const updateSistema = db.prepare(`
           UPDATE sistema SET 
             anio = @anio, 
@@ -160,9 +168,7 @@ export const Module6Controller = {
         `);
         
         if (data.sistema && data.sistema.length > 0) {
-          // Tomamos el primer registro de sistema del respaldo (generalmente solo hay 1)
           const sysData = data.sistema[0];
-          // Aseguramos que el objeto tenga id=1 para el where, aunque el update lo fuerza
           updateSistema.run({
             anio: sysData.anio,
             periodo: sysData.periodo,
@@ -180,7 +186,7 @@ export const Module6Controller = {
 
       return { 
         success: true, 
-        message: `Restauración completada.\nConfiguración actualizada: ${stats.sistema === 1 ? 'SÍ' : 'NO'}\nNuevos registros agregados:\n- Cursos: ${stats.cursos}\n- Docentes: ${stats.docentes}` 
+        message: `Restauración completada.\nConfiguración actualizada: ${stats.sistema === 1 ? 'SÍ' : 'NO'}\nNuevos registros agregados:\n- Cursos: ${stats.cursos}\n- Docentes: ${stats.docentes}\n- Capacitaciones: ${stats.caps}` 
       };
 
     } catch (error) {

@@ -131,6 +131,21 @@ select {
   background-color: #466ab8;
 }
 
+.cleanBtn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background-color: #4a4a4a;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  margin-top: 50px;
+  transition: background-color 0.3s;
+}
+.cleanBtn:hover {
+  background-color: #6b6b6b;
+}
+
 /* Contenedor del botón */
 .buttonContainer {
   display: flex;
