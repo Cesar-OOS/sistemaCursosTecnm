@@ -6,7 +6,7 @@ import path from 'path';
 // --- IMPORTACIÓN DE CONTROLADORES ---
 import Module1Controller from '../src/database/Module1controller.js';
 import Module2Controller from '../src/database/Module2controller.js';
-import { getModule3Data, getDepartmentsList, updateAccreditations } from '../src/database/Module3controller.js';
+import { getModule3Data,getDepartmentsList,updateAccreditations,generateAttendanceLists} from '../src/database/Module3controller.js';
 import { getModule4TableData, getModule4Stats, exportData } from '../src/database/Module4controller.js';
 import Module5Controller from '../src/database/Module5controller.js';
 import Module6Controller from '../src/database/Module6controller.js';
@@ -66,6 +66,17 @@ app.get('/api/module3/departments', (req, res) => {
 
 app.post('/api/module3/update-accreditations', (req, res) => {
   res.json(updateAccreditations(req.body));
+});
+
+// NUEVA RUTA: Exportar Listas
+app.post('/api/module3/export-lists', async (req, res) => {
+  try {
+    // Recibe { mode: 'single'|'all', courseName: 'Inglés...' }
+    const result = await generateAttendanceLists(req.body.mode, req.body.courseName);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 // ==========================================
@@ -157,4 +168,4 @@ app.post('/api/module6/import', upload.single('file'), (req, res) => {
 // --- INICIAR SERVIDOR ---
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
-});
+}); 

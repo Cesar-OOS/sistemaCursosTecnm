@@ -71,6 +71,7 @@ function initDatabase() {
       acreditado TEXT DEFAULT 'False' CHECK(acreditado IN ('True', 'False')),
       fecha_realizacion TEXT, 
       necesidad_detectada TEXT,
+      horario TEXT,
       FOREIGN KEY (docente_id) REFERENCES docentes(id_docente),
       FOREIGN KEY (curso_id) REFERENCES cursos(clave_curso),
       UNIQUE(docente_id, curso_id)

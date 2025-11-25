@@ -5,25 +5,31 @@ import { toast } from 'react-toastify';
 const API_URL = "http://localhost:4000/api";
 
 export default function Module3({ onBack }) {
+  // --- Estados ---
   const [teachers, setTeachers] = useState([]); 
   const [allDepartments, setAllDepartments] = useState([]); 
   const [filter, setFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [unsaved, setUnsaved] = useState(false);
+  
   const [showExport, setShowExport] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [isExporting, setIsExporting] = useState(false); // Estado para loading de exportación
 
+  // --- Cargar datos reales desde el backend al iniciar ---
   useEffect(() => {
     loadRealData();
   }, []);
 
   const loadRealData = async () => {
     try {
+      // 1. Pide los departamentos
       const deptosResponse = await fetch(`${API_URL}/module3/departments`);
       if (!deptosResponse.ok) throw new Error('Error al cargar departamentos');
       const deptos = await deptosResponse.json();
       setAllDepartments(deptos);
 
+      // 2. Pide los datos de la tabla
       const dataResponse = await fetch(`${API_URL}/module3/data`);
       if (!dataResponse.ok) throw new Error('Error al cargar datos de la tabla');
       const data = await dataResponse.json();
@@ -35,7 +41,7 @@ export default function Module3({ onBack }) {
     }
   };
 
-  // --- Lógica de Filtro Actualizada ---
+  // --- Lógica de Filtro Actualizada (Nombre Completo) ---
   const filtered = teachers
     .filter((t) => {
       return departmentFilter === "" || t.depto === departmentFilter;
@@ -43,7 +49,6 @@ export default function Module3({ onBack }) {
     .filter((t) => {
       const term = filter.toLowerCase();
       if (term === "") return true;
-      // CAMBIO: Búsqueda sobre nombre_completo
       return (
         (t.nombre_completo || "").toLowerCase().includes(term) ||
         (t.rfc || "").toLowerCase().includes(term) ||
@@ -51,6 +56,7 @@ export default function Module3({ onBack }) {
       );
     });
 
+  // --- Manejador de Checkbox ---
   function handleAccreditationChange(id, checked) {
     const updated = teachers.map((t) =>
       t.id === id ? { ...t, acreditacion: checked } : t
@@ -59,6 +65,7 @@ export default function Module3({ onBack }) {
     setUnsaved(true); 
   }
 
+  // --- GUARDAR CAMBIOS ---
   async function handleSave() {
     try {
       const response = await fetch(`${API_URL}/module3/update-accreditations`, {
@@ -88,14 +95,65 @@ export default function Module3({ onBack }) {
     }
   }
 
+  // --- NUEVAS FUNCIONES DE EXPORTACIÓN (Conectadas al Backend) ---
+
+  const handleExportRequest = async (mode) => {
+    setIsExporting(true);
+    const toastId = toast.loading("Generando listas de asistencia...");
+
+    try {
+      const response = await fetch(`${API_URL}/module3/export-lists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: mode, // 'single' o 'all'
+          courseName: selectedCourse // Solo importa si mode='single'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.update(toastId, { 
+          render: `✅ ${result.message}`, 
+          type: "success", 
+          isLoading: false, 
+          autoClose: 5000 
+        });
+        setShowExport(false); // Cierra el modal al terminar
+      } else {
+        toast.update(toastId, { 
+          render: `❌ Error: ${result.message}`, 
+          type: "error", 
+          isLoading: false, 
+          autoClose: 5000 
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.update(toastId, { 
+        render: "❌ Error de conexión con el servidor", 
+        type: "error", 
+        isLoading: false, 
+        autoClose: 5000 
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   function handleExportCourse() {
-    toast.success("Exportación de curso iniciada...");
-    setShowExport(false);
+    if (!selectedCourse) {
+      return toast.warn("Selecciona un curso primero.");
+    }
+    handleExportRequest('single');
   }
 
   function handleExportAll() {
-    toast.success("Exportación completa iniciada...");
-    setShowExport(false);
+    // Confirmación opcional para evitar clics accidentales
+    if (window.confirm("Se generarán todas las listas de asistencia. Esto puede tardar unos segundos. ¿Continuar?")) {
+      handleExportRequest('all');
+    }
   }
   
   function handleBackClick() {
@@ -108,9 +166,10 @@ export default function Module3({ onBack }) {
     onBack();
   }
 
+  // Obtener lista única de cursos para el selector del modal
   const allCourses = Array.from(
     new Set(teachers.flatMap((t) => t.curso || []))
-  );
+  ).sort(); // Ordenamos alfabéticamente
 
   return (
     <div className={styles.container}>
@@ -148,7 +207,7 @@ export default function Module3({ onBack }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                {/* CAMBIO: Columnas unificadas */}
+                {/* Columnas ajustadas a la nueva BD */}
                 <th>Nombre del Docente</th>
                 <th>RFC</th>
                 <th>Sexo</th>
@@ -170,7 +229,6 @@ export default function Module3({ onBack }) {
               ) : (
                 filtered.map((t) => (
                   <tr key={t.id}>
-                    {/* CAMBIO: Campo unificado */}
                     <td>{t.nombre_completo}</td>
                     <td>{t.rfc}</td>
                     <td>{t.sexo}</td>
@@ -206,13 +264,16 @@ export default function Module3({ onBack }) {
         
       </div>
 
+      {/* MODAL DE EXPORTACIÓN */}
       {showExport && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <h3>Exportar Listas de Asistencia</h3>
+            
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
+              disabled={isExporting}
             >
               <option value="">-- Selecciona un curso --</option>
               {allCourses.map((c, idx) => (
@@ -221,15 +282,30 @@ export default function Module3({ onBack }) {
                 </option>
               ))}
             </select>
+
             <div className={styles.modalButtons}>
               <button
                 onClick={handleExportCourse}
-                disabled={!selectedCourse}
+                disabled={!selectedCourse || isExporting}
+                style={{ opacity: isExporting ? 0.5 : 1 }}
               >
-                Exportar Curso
+                {isExporting ? "Generando..." : "Exportar Curso"}
               </button>
-              <button onClick={handleExportAll}>Exportar Todo</button>
-              <button onClick={() => setShowExport(false)}>Cancelar</button>
+              
+              <button 
+                onClick={handleExportAll}
+                disabled={isExporting}
+                style={{ opacity: isExporting ? 0.5 : 1 }}
+              >
+                Exportar Todo
+              </button>
+              
+              <button 
+                onClick={() => setShowExport(false)}
+                disabled={isExporting}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

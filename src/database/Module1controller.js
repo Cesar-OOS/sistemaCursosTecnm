@@ -3,29 +3,30 @@ import XLSX from 'xlsx';
 
 // --- UTILIDADES DE LIMPIEZA ---
 
-// Limpia texto: quita espacios extra, convierte a mayúsculas, arregla caracteres rotos
-// Y AHORA: Elimina números o guiones al inicio (ej: "13.- HUGO" -> "HUGO")
-const cleanString = (txt) => {
+// Limpia texto: quita espacios extra, convierte a mayúsculas y arregla caracteres rotos
+// PARAMETRO NUEVO: quitarNumeros (default: true). Si es false, respeta números al inicio.
+const cleanString = (txt, quitarNumeros = true) => {
   if (!txt) return "";
   let str = txt.toString().trim().toUpperCase();
   
   // 1. Corregir caracteres rotos (Ñ) y espacios dobles
-  // \uFFFD es el rombo negro con interrogación
   str = str.replace(/\uFFFD/g, "Ñ").replace(/\s+/g, " ");
 
-  // 2. Eliminar numeración o guiones al inicio
-  // Ejemplos que limpia: "13.- ", "5. ", "- ", "12 "
-  str = str.replace(/^[\d\s.-]+/, "");
+  // 2. Eliminar numeración o guiones al inicio (ej: "13.- HUGO" -> "HUGO")
+  // Solo se ejecuta si quitarNumeros es TRUE
+  if (quitarNumeros) {
+    str = str.replace(/^[\d\s.-]+/, "");
+  }
 
   return str.trim();
 };
 
-// Normaliza para comparaciones internas (quita acentos y Ñ)
+// Normaliza para comparaciones internas
 const norm = (txt) => {
   if (!txt) return "";
   return txt.toString().trim().toUpperCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
-    .replace(/Ñ/g, "N"); // Ñ -> N para comparar
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+    .replace(/Ñ/g, "N"); 
 };
 
 // Buscador flexible de columnas
@@ -56,14 +57,13 @@ function generarIdCurso(tipo, anio, totalCursos) {
 function obtenerIdDepartamento(nombreExcel, listaDepartamentosDb) {
   if (!nombreExcel) return 'DP_GEN';
   
-  // Limpieza profunda para comparación
   const excelNorm = norm(nombreExcel);
 
-  // 1. Búsqueda Exacta (Normalizada)
+  // 1. Búsqueda Exacta
   const deptoExacto = listaDepartamentosDb.find(d => norm(d.nombre) === excelNorm);
   if (deptoExacto) return deptoExacto.clave_depto;
 
-  // 2. Búsqueda por Palabras Clave (Heurística ajustada a tus datos reales)
+  // 2. Búsqueda por Palabras Clave
   if (excelNorm.includes("SISTEMAS")) return listaDepartamentosDb.find(d => d.nombre.includes("SISTEMAS"))?.clave_depto;
   if (excelNorm.includes("TIERRA") || excelNorm.includes("CIVIL")) return listaDepartamentosDb.find(d => d.nombre.includes("TIERRA"))?.clave_depto;
   if (excelNorm.includes("BASICAS")) return listaDepartamentosDb.find(d => d.nombre.includes("BASICAS"))?.clave_depto;
@@ -72,7 +72,6 @@ function obtenerIdDepartamento(nombreExcel, listaDepartamentosDb) {
   if (excelNorm.includes("METAL") || excelNorm.includes("MECANICA")) return listaDepartamentosDb.find(d => d.nombre.includes("METAL"))?.clave_depto;
   if (excelNorm.includes("QUIMICA") || excelNorm.includes("BIOQUIMICA")) return listaDepartamentosDb.find(d => d.nombre.includes("QUIMICA"))?.clave_depto;
   
-  // Caso especial: "CIENCIAS ECONÓMICO ADMINISTRATIVO"
   if (excelNorm.includes("ADMINISTRATIVO") || excelNorm.includes("ECONOMICO") || excelNorm.includes("ADMINISTRACION")) 
     return listaDepartamentosDb.find(d => d.nombre.includes("ECONOMICO"))?.clave_depto;
 
@@ -107,19 +106,14 @@ export const Module1Controller = {
       
       const transaction = db.transaction(() => {
         for (const row of data) {
-          // LIMPIEZA DE NOMBRE (Quita números y guiones iniciales)
           const nombre = cleanString(row['Nombre de los evento']); 
           if (!nombre) continue; 
           
-          // FILTRO REPROGRAMADO
           if (nombre.includes("REPROGRAMADO")) continue;
 
           const tipoRaw = row['Tipo'];
           const tipo = (tipoRaw && tipoRaw.toString().toUpperCase().includes('FD')) ? 'FD' : 'AP';
           
-          // LIMPIEZA DE FACILITADOR
-          const facilitadorLimpio = cleanString(row['Facilitador(a)']) || 'Por asignar';
-
           const existe = db.prepare("SELECT clave_curso FROM cursos WHERE nombre = ? AND anio_registro = ?").get(nombre, anioSistema);
           
           if (!existe) {
@@ -128,7 +122,7 @@ export const Module1Controller = {
                clave, nombre, tipo, 
                horas: parseInt(row['No. de horas x Curso']) || 30, 
                comp: row['Competencias a desarrollar'] || 'Sin registro', 
-               facil: facilitadorLimpio, 
+               facil: cleanString(row['Facilitador(a)']) || 'Por asignar', 
                per: periodoSistema, 
                anio: anioSistema
              });
@@ -245,16 +239,17 @@ export const Module1Controller = {
       const updateCursoPeriodo = db.prepare(`
         UPDATE cursos SET periodo = @periodo WHERE clave_curso = @clave AND (periodo IS NULL OR periodo = '')
       `);
+      
       const insertCapacitacion = db.prepare(`
-        INSERT OR IGNORE INTO capacitaciones (docente_id, curso_id, fecha_realizacion)
-        VALUES (@docId, @cursoId, @fechas)
+        INSERT OR IGNORE INTO capacitaciones (docente_id, curso_id, fecha_realizacion, horario)
+        VALUES (@docId, @cursoId, @fechas, @horario)
       `);
 
       let stats = { docentesNuevos: 0, docentesAct: 0, cursosNuevos: 0, inscripciones: 0 };
 
       const transaction = db.transaction(() => {
         for (const row of data) {
-          // --- DOCENTE ---
+          // --- LECTURA DATOS ---
           let nombreCompleto = cleanString(obtenerValorFuzzy(row, 'Nombre'));
           
           if (!nombreCompleto || nombreCompleto.length < 5) {
@@ -272,15 +267,18 @@ export const Module1Controller = {
           
           const deptoNombreRaw = cleanString(obtenerValorFuzzy(row, 'Departamento') || obtenerValorFuzzy(row, 'adscripción'));
           const deptoIdExcel = obtenerIdDepartamento(deptoNombreRaw, departamentosDb);
-          const puesto = cleanString(obtenerValorFuzzy(row, 'Puesto')) || 'Docente';
+          
+          const puesto = cleanString(obtenerValorFuzzy(row, 'Puesto')) || 'Base';
 
-          // LIMPIEZA DE CURSO Y FACILITADOR
           const nombreCursoRaw = cleanString(obtenerValorFuzzy(row, 'Nombre del evento') || obtenerValorFuzzy(row, 'Nombre del curso'));
           const facilitador = cleanString(obtenerValorFuzzy(row, 'facilitador') || 'Por definir');
 
-          // FILTRO REPROGRAMADO (Si dice reprogramado, no crea curso)
+          // --- CAMBIO AQUÍ: Para horario pasamos 'false' al cleanString para NO borrar números iniciales ---
+          const horario = cleanString(obtenerValorFuzzy(row, 'Horario'), false) || '';
+
           const esReprogramado = nombreCursoRaw.includes("REPROGRAMADO") || facilitador.includes("REPROGRAMADO");
 
+          // --- 1. DOCENTE ---
           let docId = null;
           let docenteEncontrado = db.prepare("SELECT id_docente, departamento_id FROM docentes WHERE rfc = ?").get(rfc);
           
@@ -301,8 +299,8 @@ export const Module1Controller = {
 
           if (esReprogramado || !nombreCursoRaw) continue;
 
-          // --- CURSO ---
-          const nombreCurso = nombreCursoRaw; // Ya viene limpio por cleanString al inicio
+          // --- 2. CURSO ---
+          const nombreCurso = nombreCursoRaw; 
           const fechasEspecificas = cleanString(obtenerValorFuzzy(row, 'Periodo'));
 
           const cursoExistente = db.prepare("SELECT clave_curso FROM cursos WHERE nombre = ? AND anio_registro = ?").get(nombreCurso, anioSistema);
@@ -324,7 +322,8 @@ export const Module1Controller = {
             stats.cursosNuevos++;
           }
 
-          insertCapacitacion.run({ docId, cursoId, fechas: fechasEspecificas });
+          // --- 3. INSCRIPCIÓN ---
+          insertCapacitacion.run({ docId, cursoId, fechas: fechasEspecificas, horario });
           stats.inscripciones++;
         }
       });
