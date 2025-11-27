@@ -78,6 +78,15 @@ function initDatabase() {
     );
   `);
 
+  // 6. CONTADOR DE FOLIOS
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS folios_counter (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      ultimo_folio INTEGER DEFAULT 0
+    );
+    INSERT OR IGNORE INTO folios_counter (id, ultimo_folio) VALUES (1, 0);
+  `);
+
   console.log('--- Base de Datos Lista (Estructura de Fechas Corregida) ---');
 }
 

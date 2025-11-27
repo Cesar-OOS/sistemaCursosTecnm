@@ -44,8 +44,10 @@ function App() {
       document.body.style.backgroundImage = "none";
       document.body.style.backgroundColor = "#ffffff";
     } else {
-      document.body.style.backgroundImage = 'linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)), url("/fondo.jpg")';
+      document.body.style.backgroundImage = 'linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)), url("/fondo.png")';
+      document.body.style.backgroundSize = "cover";
       document.body.style.backgroundColor = "";
+      document.body.style.backgroundPosition = "center";
     }
   }, [user]);
 

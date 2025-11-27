@@ -8,7 +8,7 @@ import path from 'path';
 import Module1Controller from '../src/database/Module1controller.js';
 import Module2Controller from '../src/database/Module2controller.js';
 import { getModule3Data, getDepartmentsList, updateAccreditations, generateAttendanceLists } from '../src/database/Module3controller.js';
-import { getModule4TableData, getModule4Stats, exportData } from '../src/database/Module4controller.js';
+import { getModule4TableData, getModule4Stats, exportMetricsExcel } from '../src/database/Module4controller.js';
 import Module5Controller from '../src/database/Module5controller.js';
 import Module6Controller from '../src/database/Module6controller.js';
 
@@ -90,18 +90,21 @@ app.post('/api/module4/table', (req, res) => {
   }
 });
 
-app.get('/api/module4/stats', (req, res) => {
+// CAMBIO: Ahora es POST para recibir filtros
+app.post('/api/module4/stats', (req, res) => {
   try {
-    const data = getModule4Stats();
+    const data = getModule4Stats(req.body); // req.body tiene los filtros
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
+// CAMBIO: Ruta de exportación actualizada
 app.post('/api/module4/export', async (req, res) => {
   try {
-    const result = await exportData(req.body.format, req.body.filters);
+    // Solo necesitamos los filtros para esta exportación
+    const result = await exportMetricsExcel(req.body.filters);
     res.json(result);
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });

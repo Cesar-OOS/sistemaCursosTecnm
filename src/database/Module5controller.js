@@ -12,21 +12,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../');
 const PLANTILLAS_DIR = path.join(PROJECT_ROOT, 'src', 'plantillas');
-const TEMP_WORK_DIR = path.join(PROJECT_ROOT, 'src', 'temp_work'); // Solo para el script .ps1
+const TEMP_WORK_DIR = path.join(PROJECT_ROOT, 'src', 'temp_work'); 
 
-// Asegurar carpetas internas
 if (!fs.existsSync(PLANTILLAS_DIR)) fs.mkdirSync(PLANTILLAS_DIR, { recursive: true });
 if (!fs.existsSync(TEMP_WORK_DIR)) fs.mkdirSync(TEMP_WORK_DIR, { recursive: true });
 
 const sanitizeName = (name) => name.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ \-_]/g, "").trim();
 
-// --- FUNCIÓN DE CONVERSIÓN (POWERSHELL) ---
+// --- FUNCIÓN CONVERSIÓN POWERSHELL ---
 const convertToPdf = (inputPath, outputPath) => {
     return new Promise((resolve, reject) => {
         const absInput = path.resolve(inputPath);
         const absOutput = path.resolve(outputPath);
         
-        // Script temporal
         const scriptPath = path.join(TEMP_WORK_DIR, `convert_${Date.now()}_${Math.floor(Math.random()*1000)}.ps1`);
 
         const psScriptContent = `
@@ -37,11 +35,8 @@ const convertToPdf = (inputPath, outputPath) => {
                 $word = New-Object -ComObject Word.Application
                 $word.Visible = $false
                 $word.DisplayAlerts = "wdAlertsNone"
-                
-                if (-not (Test-Path $docPath)) { throw "Archivo no encontrado: $docPath" }
-
+                if (-not (Test-Path $docPath)) { throw "Archivo no encontrado" }
                 $doc = $word.Documents.Open($docPath)
-                # 17 = wdExportFormatPDF
                 $doc.ExportAsFixedFormat($pdfPath, 17, $false, 0, 0, 1, 1, 0, $true, $true, 0, $true, $true, $false)
                 $doc.Close($false)
             } catch {
@@ -56,19 +51,16 @@ const convertToPdf = (inputPath, outputPath) => {
         `;
 
         fs.writeFileSync(scriptPath, psScriptContent);
-
         const command = `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}" "${absInput}" "${absOutput}"`;
 
         exec(command, (error, stdout, stderr) => {
-            // Borrar el script .ps1 (ya no se necesita)
             try { if (fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath); } catch(e){}
-
             if (error) {
                 console.error(`[Error PDF]: ${stderr || stdout}`);
                 reject(error);
             } else {
                 if (fs.existsSync(absOutput)) resolve(true);
-                else reject(new Error("Word no reportó error, pero el PDF no se creó."));
+                else reject(new Error("PDF no creado."));
             }
         });
     });
@@ -125,7 +117,7 @@ export const Module5Controller = {
         }
     },
 
-    // 5. GENERAR CONSTANCIAS (ORGANIZADAS)
+    // 5. GENERAR CONSTANCIAS (FOLIO AUTOMÁTICO)
     generateConstancias: async (courseId, fechaExpedicion, plantillaName) => {
         try {
             // A. VALIDACIONES
@@ -147,7 +139,14 @@ export const Module5Controller = {
 
             if (docentes.length === 0) return { success: false, message: "No hay docentes acreditados." };
 
-            // C. CARPETAS BASE
+            // --- LÓGICA FOLIO ---
+            // Obtener últimos 2 dígitos del año (ej. 2025 -> 25)
+            const anioShort = sistema.anio.toString().slice(-2);
+            
+            // Obtener contador actual
+            let folioCounter = db.prepare("SELECT ultimo_folio FROM folios_counter WHERE id=1").get().ultimo_folio;
+
+            // C. CARPETAS
             const documentsPath = path.join(os.homedir(), 'Documents');
             const anioDir = sistema.anio.toString();
             const periodoDir = sistema.periodo.replace(/[^a-zA-Z0-9 -]/g, "").trim();
@@ -155,22 +154,19 @@ export const Module5Controller = {
             
             if (!fs.existsSync(baseExportDir)) fs.mkdirSync(baseExportDir, { recursive: true });
 
-            // --- C.1 CREAR CARPETA DEL CURSO ---
             const safeCourseId = courseId.replace(/[^a-zA-Z0-9 -]/g, "_");
             let counter = 1;
             let folderName = `Constancias_${String(counter).padStart(2,'0')} ${safeCourseId}`;
-            
             while (fs.existsSync(path.join(baseExportDir, folderName))) {
                 counter++;
                 folderName = `Constancias_${String(counter).padStart(2,'0')} ${safeCourseId}`;
             }
             
             const courseFolder = path.join(baseExportDir, folderName);
-            fs.mkdirSync(courseFolder, { recursive: true });
-
-            // --- C.2 CREAR SUBCARPETAS (word, pdf) ---
             const wordFolder = path.join(courseFolder, 'word');
             const pdfFolder = path.join(courseFolder, 'pdf');
+            
+            fs.mkdirSync(courseFolder, { recursive: true });
             fs.mkdirSync(wordFolder, { recursive: true });
             fs.mkdirSync(pdfFolder, { recursive: true });
 
@@ -180,13 +176,20 @@ export const Module5Controller = {
             const content = fs.readFileSync(plantillaPath, 'binary');
             let errors = [];
 
+            // Query para actualizar folio
+            const updateFolio = db.prepare("UPDATE folios_counter SET ultimo_folio = ? WHERE id=1");
+
             for (const doc of docentes) {
+                // 1. CALCULAR FOLIO
+                folioCounter++; // Incrementamos para este docente
+                const folioStr = `DA-${folioCounter}/${anioShort}`; // Ej: DA-498/25
+
+                // 2. Rellenar Plantilla
                 const zip = new PizZip(content);
                 const docx = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
 
                 const nombreCompleto = doc.nombre_completo.trim().toUpperCase();
 
-                // 1. RELLENAR
                 docx.render({
                     nombreProfesor: nombreCompleto,
                     nombreCurso: curso.nombre.toUpperCase(),
@@ -195,10 +198,11 @@ export const Module5Controller = {
                     horasCurso: `${curso.horas} HORAS`,
                     codigoCurso: curso.clave_curso,
                     directorTec: (sistema.director_nombre || "DIRECTOR").toUpperCase(),
-                    fechaExpedicion: fechaExpedicion.toUpperCase()
+                    fechaExpedicion: fechaExpedicion.toUpperCase(),
+                    folio: folioStr // Variable Nueva
                 });
 
-                // 2. PREPARAR NOMBRES
+                // 3. Guardar Archivos
                 const nameParts = nombreCompleto.split(' ');
                 const shortName = nameParts.slice(0, 2).join('_'); 
                 const baseFileName = `Constancia_${sanitizeName(shortName)}`;
@@ -206,11 +210,9 @@ export const Module5Controller = {
                 const finalDocxPath = path.join(wordFolder, `${baseFileName}.docx`);
                 const finalPdfPath = path.join(pdfFolder, `${baseFileName}.pdf`);
 
-                // 3. GUARDAR DOCX FINAL (Directamente en la carpeta 'word')
                 const buf = docx.getZip().generate({ type: 'nodebuffer' });
                 fs.writeFileSync(finalDocxPath, buf);
 
-                // 4. CONVERTIR A PDF (Desde la carpeta 'word' a la carpeta 'pdf')
                 try {
                     await convertToPdf(finalDocxPath, finalPdfPath);
                 } catch (convError) {
@@ -219,14 +221,17 @@ export const Module5Controller = {
                 }
             }
 
+            // E. GUARDAR EL NUEVO CONTADOR EN BD
+            // Solo si terminamos el bucle (aunque haya errores de PDF, el folio se consumió)
+            updateFolio.run(folioCounter);
+
             if (errors.length > 0) {
-                return { success: true, message: `Proceso terminado con ${errors.length} errores de conversión (Word generados).` };
+                return { success: true, message: `Terminado con ${errors.length} errores. Folios actualizados hasta ${folioCounter}.` };
             }
 
             return { success: true, message: `Carpeta generada: ${folderName}` };
 
         } catch (error) {
-            // Errores de plantilla
             if (error.properties && error.properties.errors) {
                 const errorMessages = error.properties.errors.map(e => e.message).join('\n');
                 return { success: false, error: "Plantilla corrupta: " + errorMessages };

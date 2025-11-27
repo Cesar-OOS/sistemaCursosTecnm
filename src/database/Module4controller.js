@@ -1,11 +1,37 @@
 import db from './db.js';
 import fs from 'fs';
 import path from 'path';
-import os from 'os'; // Necesario para encontrar la carpeta Documentos
-import ExcelJS from 'exceljs'; // CAMBIO: Usamos ExcelJS para estilos avanzados
-import PDFDocument from 'pdfkit-table';
+import os from 'os';
+import ExcelJS from 'exceljs';
+import { fileURLToPath } from 'url';
 
-// --- CONSTRUCTOR DE WHERE (Existente) ---
+// --- RUTAS ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '../../');
+const PATH_PLANTILLA_EXCEL = path.join(PROJECT_ROOT, 'Cursos Profesores.xlsx');
+
+// --- HELPER: CONVERTIR A CAMELCASE ---
+// Ej: "SISTEMAS Y COMPUTACIÓN" -> "sistemasYComputacion"
+const toCamelCase = (str) => {
+  if (!str) return "";
+  return str
+    .toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos (á -> a)
+    .replace(/[^a-zA-Z0-9 ]/g, "") // Quitar caracteres raros (menos espacios)
+    .trim()
+    .toLowerCase()
+    .split(/\s+/) // Separar por espacios
+    .map((word, index) => {
+      // La primera palabra en minúscula, las siguientes Capitalizadas
+      if (index === 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join('');
+};
+
+// --- HELPER: CONSTRUCTOR DE WHERE (Para la tabla visual) ---
+// Este SÍ usa todos los filtros, incluido el tipo.
 function buildWhereClause(filters) {
   let conditions = [];
   let params = [];
@@ -43,14 +69,17 @@ function buildWhereClause(filters) {
   };
 }
 
-// --- OBTENER DATOS TABLA (Existente) ---
+// --- 1. OBTENER DATOS TABLA VISUAL (Mantiene filtros visuales) ---
 export const getModule4TableData = (filters) => {
   try {
     const { where, params } = buildWhereClause(filters);
 
     const sql = `
       SELECT 
-        d.ap, d.am, d.nombres, d.sexo, d.rfc, d.puesto, 
+        d.nombre_completo, 
+        d.sexo, 
+        d.rfc, 
+        d.puesto, 
         dep.nombre as depto_nombre, 
         c.nombre as curso_nombre, 
         c.anio_registro as anio, 
@@ -69,8 +98,10 @@ export const getModule4TableData = (filters) => {
     return rows.map(row => {
       const esPosgrado = row.depto_nombre && row.depto_nombre.toUpperCase().includes("POSGRADO");
       return {
-        nombre_completo: `${row.ap} ${row.am} ${row.nombres}`.trim(),
-        ap: row.ap, am: row.am, nombres: row.nombres, rfc: row.rfc, sexo: row.sexo, puesto: row.puesto,
+        nombre_completo: row.nombre_completo,
+        rfc: row.rfc, 
+        sexo: row.sexo, 
+        puesto: row.puesto,
         departamento: row.depto_nombre,
         licenciatura: esPosgrado ? "No" : "Si",
         posgrado: esPosgrado ? "Si" : "No",
@@ -87,18 +118,55 @@ export const getModule4TableData = (filters) => {
   }
 };
 
-// --- OBTENER ESTADÍSTICAS (Existente) ---
-export const getModule4Stats = () => {
+// --- 2. OBTENER ESTADÍSTICAS ---
+export const getModule4Stats = (filters = {}) => {
   try {
-    const sqlTotalDocentes = `SELECT COUNT(*) as total FROM docentes`;
-    const totalDocentes = db.prepare(sqlTotalDocentes).get().total;
+    // 1. Total Docentes
+    let whereDocentes = "";
+    let paramsDocentes = [];
+    
+    if (filters.departamento && filters.departamento !== "") {
+      whereDocentes = "WHERE dep.nombre LIKE ?";
+      paramsDocentes.push(filters.departamento);
+    }
 
-    const sqlCapacitados = `SELECT COUNT(DISTINCT docente_id) as total FROM capacitaciones`;
-    const capacitados = db.prepare(sqlCapacitados).get().total;
+    const sqlTotalDocentes = `
+      SELECT COUNT(*) as total 
+      FROM docentes d
+      JOIN departamentos dep ON d.departamento_id = dep.clave_depto
+      ${whereDocentes}
+    `;
+    const totalDocentes = db.prepare(sqlTotalDocentes).get(...paramsDocentes).total;
 
+    // 2. Docentes Capacitados
+    const { where, params } = buildWhereClause(filters);
+    const sqlCapacitados = `
+      SELECT COUNT(DISTINCT d.id_docente) as total
+      FROM capacitaciones cap
+      JOIN docentes d ON cap.docente_id = d.id_docente
+      JOIN cursos c ON cap.curso_id = c.clave_curso
+      JOIN departamentos dep ON d.departamento_id = dep.clave_depto
+      ${where}
+    `;
+    const capacitados = db.prepare(sqlCapacitados).get(...params).total;
+
+    // 3. Porcentaje
     const porcentaje = totalDocentes > 0 
       ? ((capacitados / totalDocentes) * 100).toFixed(2) 
       : "0.00";
+
+    // 4. Estadísticas Posgrado
+    let wherePos = ["dep.nombre LIKE '%POSGRADO%'", "c.tipo = 'AP'"];
+    let paramsPos = [];
+
+    if (filters.anio) {
+        wherePos.push("c.anio_registro = ?");
+        paramsPos.push(parseInt(filters.anio));
+    }
+    if (filters.periodo) {
+        wherePos.push("c.periodo = ?");
+        paramsPos.push(filters.periodo);
+    }
 
     const sqlPos = `
       SELECT COUNT(DISTINCT cap.docente_id) as total
@@ -106,10 +174,10 @@ export const getModule4Stats = () => {
       JOIN docentes d ON cap.docente_id = d.id_docente
       JOIN cursos c ON cap.curso_id = c.clave_curso
       JOIN departamentos dep ON d.departamento_id = dep.clave_depto
-      WHERE dep.nombre LIKE '%POSGRADO%' AND c.tipo = 'AP'
+      WHERE ${wherePos.join(" AND ")}
     `;
     
-    const totalPosgrado = db.prepare(sqlPos).get().total;
+    const totalPosgrado = db.prepare(sqlPos).get(...paramsPos).total;
 
     return { totalDocentes, capacitados, porcentaje, totalPosgrado };
 
@@ -119,184 +187,139 @@ export const getModule4Stats = () => {
   }
 };
 
-// --- NUEVO: LÓGICA DE EXPORTACIÓN ---
-export const exportData = async (format, filters) => {
+// --- 3. EXPORTAR MÉTRICAS (MODIFICADO) ---
+export const exportMetricsExcel = async (filters) => {
   try {
-    // 1. Obtener Ruta Base (Documentos del Usuario)
-    const documentsPath = path.join(os.homedir(), 'Documents'); // C:\Users\Usuario\Documents
-    
-    // 2. Obtener datos del Sistema para carpetas
-    const sys = db.prepare("SELECT anio, periodo FROM sistema WHERE id=1").get();
-    const anioDir = sys ? sys.anio.toString() : "General";
-    // Limpiar nombre del periodo para evitar caracteres inválidos en rutas
-    const periodoDir = sys ? sys.periodo.replace(/[^a-zA-Z0-9 -]/g, "").trim() : "General";
-
-    // 3. Construir ruta completa
-    const exportFolder = path.join(documentsPath, 'sistemaCursosITZ', 'Archivos_Exportados', anioDir, periodoDir, 'Estadisticas');
-
-    // 4. Crear carpetas si no existen (recursive: true crea toda la ruta)
-    if (!fs.existsSync(exportFolder)) {
-      fs.mkdirSync(exportFolder, { recursive: true });
+    // A. Validaciones
+    if (!fs.existsSync(PATH_PLANTILLA_EXCEL)) {
+      return { success: false, message: "No se encuentra la plantilla 'Cursos Profesores.xlsx' en la raíz." };
     }
 
-    // 5. Calcular Nombre de Archivo (MetricasXXX)
-    const ext = format === 'excel' ? '.xlsx' : '.pdf';
-    let counter = 1;
-    let fileName = `Metricas${String(counter).padStart(3, '0')}${ext}`;
-    
-    while (fs.existsSync(path.join(exportFolder, fileName))) {
-      counter++;
-      fileName = `Metricas${String(counter).padStart(3, '0')}${ext}`;
+    // B. Obtener Datos del Sistema
+    const sistema = db.prepare("SELECT anio, periodo FROM sistema WHERE id=1").get();
+    const anioDir = sistema.anio.toString();
+    const periodoDir = sistema.periodo.replace(/[^a-zA-Z0-9 -]/g, "").trim(); 
+
+    // C. CONSTRUCCIÓN DE SQL ESPECÍFICO PARA EXPORTACIÓN
+    // NOTA: Aquí ignoramos explícitamente el filtro 'tipo' para contar AP y FD juntos.
+    let whereConditions = [];
+    let params = [];
+
+    // Filtro por Departamento
+    if (filters.departamento && filters.departamento !== "") {
+      whereConditions.push("dep.nombre LIKE ?");
+      params.push(filters.departamento);
     }
 
-    const fullPath = path.join(exportFolder, fileName);
+    // Filtro por Año
+    if (filters.anio && filters.anio !== "") {
+      whereConditions.push("c.anio_registro = ?");
+      params.push(parseInt(filters.anio));
+    }
 
-    // 6. Obtener Datos
-    const tableData = getModule4TableData(filters);
-    const statsData = getModule4Stats();
+    // Filtro por Periodo
+    if (filters.periodo && filters.periodo !== "") {
+      whereConditions.push("c.periodo = ?");
+      params.push(filters.periodo);
+    }
 
-    // 7. Generar Archivo
-    if (format === 'excel') {
-      await generateExcel(fullPath, tableData, statsData);
+    // Filtro por Acreditado
+    if (filters.acreditado && filters.acreditado !== "Ambos" && filters.acreditado !== "") {
+      whereConditions.push("cap.acreditado = ?");
+      params.push(filters.acreditado === "Si" ? "True" : "False");
+    }
+
+    let sqlBase = `
+      SELECT 
+        d.id_docente,
+        d.nombre_completo,
+        dep.nombre as depto_nombre,
+        COUNT(cap.id) as total_cursos,
+        SUM(CASE WHEN c.tipo = 'FD' THEN 1 ELSE 0 END) as total_fd,
+        SUM(CASE WHEN c.tipo = 'AP' THEN 1 ELSE 0 END) as total_ap
+      FROM docentes d
+      JOIN departamentos dep ON d.departamento_id = dep.clave_depto
+      LEFT JOIN capacitaciones cap ON d.id_docente = cap.docente_id
+      LEFT JOIN cursos c ON cap.curso_id = c.clave_curso
+    `;
+
+    if (whereConditions.length > 0) {
+      sqlBase += " WHERE " + whereConditions.join(" AND ");
+    }
+
+    sqlBase += " GROUP BY d.id_docente, d.nombre_completo, dep.nombre ORDER BY d.nombre_completo ASC";
+
+    const docentesMetricas = db.prepare(sqlBase).all(...params);
+
+    // D. Configurar Rutas y Nombres
+    const documentsPath = path.join(os.homedir(), 'Documents');
+    // CAMBIO: Subcarpeta '/Estadisticas'
+    const outputFolder = path.join(documentsPath, 'sistemaCursosITZ', 'Archivos_Exportados', anioDir, periodoDir, 'Estadisticas');
+    
+    if (!fs.existsSync(outputFolder)) {
+      fs.mkdirSync(outputFolder, { recursive: true });
+    }
+
+    // Determinar nombre base
+    let baseName = "";
+    if (filters.departamento && filters.departamento !== "") {
+      // CAMBIO: Usar CamelCase para el nombre del departamento
+      const camelDepto = toCamelCase(filters.departamento);
+      baseName = `Metricas_${periodoDir}_${anioDir}_${camelDepto}`;
     } else {
-      await generatePDF(fullPath, tableData, statsData);
+      baseName = `Metricas_${periodoDir}_${anioDir}`;
     }
 
-    return { success: true, message: `Archivo guardado en: ${fullPath}` };
+    // Versionado incremental
+    let counter = 1;
+    let fileName = `${baseName}_${String(counter).padStart(3, '0')}.xlsx`;
+    while (fs.existsSync(path.join(outputFolder, fileName))) {
+      counter++;
+      fileName = `${baseName}_${String(counter).padStart(3, '0')}.xlsx`;
+    }
+    const fullPath = path.join(outputFolder, fileName);
+
+    // E. Manipulación del Excel
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(PATH_PLANTILLA_EXCEL);
+    const worksheet = workbook.getWorksheet(1);
+
+    // 1. Llenar Encabezados
+    const nombreDeptoHeader = (filters.departamento && filters.departamento !== "") 
+        ? filters.departamento.toUpperCase() 
+        : "TODOS LOS DEPARTAMENTOS";
+    worksheet.getCell('G5').value = nombreDeptoHeader;
+    worksheet.getCell('G7').value = sistema.anio;
+    worksheet.getCell('G9').value = sistema.periodo;
+
+    // 2. Llenar Tabla
+    let currentRow = 11;
+    let contador = 1;
+
+    for (const doc of docentesMetricas) {
+      worksheet.getCell(`B${currentRow}`).value = contador++;
+      worksheet.getCell(`C${currentRow}`).value = doc.id_docente;
+      worksheet.getCell(`D${currentRow}`).value = doc.nombre_completo;
+      worksheet.getCell(`E${currentRow}`).value = doc.depto_nombre;
+      worksheet.getCell(`F${currentRow}`).value = doc.total_cursos;
+      worksheet.getCell(`G${currentRow}`).value = doc.total_fd;
+      worksheet.getCell(`H${currentRow}`).value = doc.total_ap;
+      
+      ['B','C','D','E','F','G','H'].forEach(col => {
+          worksheet.getCell(`${col}${currentRow}`).border = {
+            top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}
+          };
+      });
+
+      currentRow++;
+    }
+
+    await workbook.xlsx.writeFile(fullPath);
+
+    return { success: true, message: `Métricas exportadas: ${fileName}`, path: fullPath };
 
   } catch (error) {
-    console.error("Error exportando:", error);
+    console.error("Error exportando métricas:", error);
     return { success: false, message: error.message };
   }
 };
-
-// --- GENERADORES ---
-
-async function generateExcel(filePath, tableData, stats) {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Metricas');
-
-  // 1. Definir Columnas y Anchos
-  worksheet.columns = [
-    { header: 'Nombre Completo', key: 'nombre', width: 24 }, // Ancho 24 solicitado
-    { header: 'Apellido P.', key: 'ap', width: 15 },
-    { header: 'Apellido M.', key: 'am', width: 15 },
-    { header: 'Año', key: 'anio', width: 8 },
-    { header: 'Periodo', key: 'periodo', width: 20 },
-    { header: 'Licenciatura', key: 'lic', width: 12 },
-    { header: 'Posgrado', key: 'pos', width: 10 },
-    { header: 'Acreditado', key: 'acr', width: 12 },
-    { header: 'Curso', key: 'curso', width: 35 },
-  ];
-
-  // 2. Estilo de Encabezados (Fila 1)
-  const headerRow = worksheet.getRow(1);
-  headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: 'FF000000' } }; // Negrita
-    cell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF95B3D7' } // Color #95B3D7
-    };
-    cell.border = {
-      top: { style: 'thin' },
-      left: { style: 'thin' },
-      bottom: { style: 'thin' },
-      right: { style: 'thin' }
-    };
-    cell.alignment = { vertical: 'middle', horizontal: 'center' };
-  });
-
-  // 3. Agregar Datos de la Tabla
-  tableData.forEach(d => {
-    const row = worksheet.addRow({
-      nombre: d.nombre_completo,
-      ap: d.ap,
-      am: d.am,
-      anio: d.anio,
-      periodo: d.periodo,
-      lic: d.licenciatura,
-      pos: d.posgrado,
-      acr: d.acreditado,
-      curso: d.capacitacion_nombre
-    });
-
-    // Bordes para cada celda de datos
-    row.eachCell((cell) => {
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-    });
-  });
-
-  // 4. Espacio en blanco
-  worksheet.addRow([]);
-  worksheet.addRow([]);
-
-  // 5. Estadísticas Generales
-  const titleRow = worksheet.addRow(['ESTADÍSTICAS GENERALES']);
-  titleRow.font = { bold: true, size: 12 };
-  
-  const statsRows = [
-    ['Número total de docentes:', stats.totalDocentes],
-    ['Docentes Capacitados:', stats.capacitados],
-    ['Porcentaje de capacitación:', `${stats.porcentaje}%`],
-    ['Participantes Posgrado (AP):', stats.totalPosgrado]
-  ];
-
-  statsRows.forEach(stat => {
-    worksheet.addRow(stat);
-  });
-
-  // Guardar archivo
-  await workbook.xlsx.writeFile(filePath);
-}
-
-// --- GENERADOR PDF (Sin cambios mayores, solo formato) ---
-async function generatePDF(filePath, tableData, stats) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
-    const stream = fs.createWriteStream(filePath);
-
-    doc.pipe(stream);
-
-    doc.fontSize(16).text('Reporte de Métricas y Estadísticas', { align: 'center' });
-    doc.moveDown();
-
-    const table = {
-      title: "Listado de Docentes",
-      headers: ["Nombre", "AP", "AM", "Año", "Periodo", "Lic.", "Pos.", "Acr.", "Curso"],
-      rows: tableData.map(r => [
-        r.nombres, r.ap, r.am, 
-        r.anio?.toString() || '', 
-        r.periodo || '', 
-        r.licenciatura, r.posgrado, r.acreditado, 
-        (r.capacitacion_nombre || '').substring(0, 25)
-      ]),
-    };
-
-    doc.table(table, { 
-      width: 780,
-      prepareHeader: () => doc.fontSize(10).font("Helvetica-Bold"),
-      prepareRow: () => doc.fontSize(9).font("Helvetica")
-    });
-
-    doc.moveDown(2);
-
-    doc.fontSize(12).font("Helvetica-Bold").text('ESTADÍSTICAS GENERALES');
-    doc.moveDown(0.5);
-    doc.fontSize(10).font("Helvetica");
-    doc.text(`Número total de docentes: ${stats.totalDocentes}`);
-    doc.text(`Docentes Capacitados: ${stats.capacitados}`);
-    doc.text(`(%) de docentes capacitados: ${stats.porcentaje}%`);
-    doc.text(`Participantes de nivel posgrado (AP): ${stats.totalPosgrado}`);
-
-    doc.end();
-
-    stream.on('finish', () => resolve());
-    stream.on('error', (err) => reject(err));
-  });
-}

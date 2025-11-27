@@ -1,64 +1,65 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Module4.module.css";
-
-// --- 1. IMPORTAR TOASTIFY ---
 import { toast } from 'react-toastify';
 
-// URL del backend
 const API_URL = "http://localhost:4000/api";
 
 function Module4({ onBack }) {
-  // --- Estados de Filtros ---
   const [filters, setFilters] = useState({
     tipo: "",
     departamento: "",
     anio: "2025",
     periodo: "Enero - Junio",
-    acreditado: "" 
+    acreditado: ""
   });
 
-  // --- Estados de Datos ---
   const [deptosOptions, setDeptosOptions] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [stats, setStats] = useState({
-    totalDocentes: 0,
-    capacitados: 0,
-    porcentaje: 0,
-    totalPosgrado: 0
+    totalDocentes: 0, capacitados: 0, porcentaje: 0, totalPosgrado: 0
   });
 
-  // Estado para el formato de exportación
   const [exportFormat, setExportFormat] = useState("excel");
   const [isExporting, setIsExporting] = useState(false);
 
-  // Opciones estáticas
   const typeOptions = ["Actualización Profesional", "Formación Docente"];
   const acrediptions = ["Si", "No", "Ambos"];
   const yearOptions = Array.from({ length: 10 }, (_, i) => (2024 + i).toString());
   const periodOptions = ["Agosto - Diciembre", "Enero - Junio"];
 
-  // --- Cargar Datos Iniciales ---
+  // Carga Inicial
   useEffect(() => {
+    // Departamentos
     fetch(`${API_URL}/module3/departments`)
       .then(res => res.json())
       .then(data => setDeptosOptions(data))
-      .catch(err => console.error("Error cargando departamentos:", err));
+      .catch(() => toast.error("Error cargando departamentos"));
 
-    fetch(`${API_URL}/module4/stats`)
-      .then(res => res.json())
-      .then(data => setStats(data))
-      .catch(err => console.error("Error cargando estadísticas:", err));
+    // Estadísticas Globales Iniciales (Filtros vacíos)
+    fetchStats({});
   }, []);
 
-  // --- Manejo de Inputs ---
+  // Función auxiliar para pedir estadísticas
+  const fetchStats = (currentFilters) => {
+    fetch(`${API_URL}/module4/stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentFilters)
+    })
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(() => console.error("Error actualizando estadísticas"));
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  // --- Buscar ---
+  // BUSCAR: Actualiza Tabla Y Estadísticas
   const handleSearch = async () => {
     try {
+      // 1. Tabla
       const response = await fetch(`${API_URL}/module4/table`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,63 +68,61 @@ function Module4({ onBack }) {
       const data = await response.json();
       setTableData(data);
       
-      if (data.length > 0) {
-        toast.success(`Se encontraron ${data.length} registros`);
-      } else {
-        toast.info("No se encontraron resultados con los filtros actuales");
-      }
+      if (data.length > 0) toast.success(`Se encontraron ${data.length} registros`);
+      else toast.info("No se encontraron resultados");
+
+      // 2. Actualizar Estadísticas con los filtros actuales
+      fetchStats(filters);
 
     } catch (error) {
-      console.error("Error buscando datos:", error);
-      toast.error("Error al buscar datos en el servidor");
+      toast.error("Error al buscar datos");
     }
   };
 
   // --- Limpiar ---
   const handleClean = () => {
+    // 1. Restablecer los inputs visuales a sus valores por defecto
     setFilters({
       tipo: "",
       departamento: "",
-      anio: "2025",
-      periodo: "Enero - Junio",
+      anio: "2025",           // Visualmente vuelve a 2025
+      periodo: "Enero - Junio", // Visualmente vuelve al periodo 1
       acreditado: ""
     });
-    setTableData([]);
-    toast.info("Filtros limpiados");
+    
+    setTableData([]); // Limpiar la tabla
+    
+    // 2. Pedir estadísticas GLOBALES (Truco: Enviar objeto vacío)
+    // Al enviar {}, el backend ignora el año y periodo por defecto, calculando todo el historial.
+    fetchStats({}); 
+    
+    toast.info("Filtros limpiados. Mostrando estadísticas globales.");
   };
 
-  // --- EXPORTAR ---
   const handleExport = async () => {
-    // Validación: Debe haber datos en la tabla
-    if (tableData.length === 0) {
-      toast.warn("Primero debes realizar una búsqueda con resultados para poder exportar.");
-      return;
-    }
 
     setIsExporting(true);
-    const toastId = toast.loading("Generando archivo...");
+    const toastId = toast.loading("Generando reporte de métricas...");
 
     try {
       const response = await fetch(`${API_URL}/module4/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          format: exportFormat,
-          filters: filters // Enviamos los filtros para que el backend genere la misma data
+          filters: filters // Enviamos los filtros (especialmente 'departamento')
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        toast.update(toastId, { render: `✅ Archivo guardado en Documentos`, type: "success", isLoading: false, autoClose: 5000 });
+        toast.update(toastId, { render: `✅ ${result.message}`, type: "success", isLoading: false, autoClose: 5000 });
       } else {
         toast.update(toastId, { render: `❌ Error: ${result.message}`, type: "error", isLoading: false, autoClose: 5000 });
       }
 
     } catch (error) {
-      console.error(error);
-      toast.update(toastId, { render: "❌ Error de conexión al exportar", type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: "❌ Error de conexión", type: "error", isLoading: false, autoClose: 5000 });
     } finally {
       setIsExporting(false);
     }
@@ -131,51 +130,37 @@ function Module4({ onBack }) {
 
   return (
     <div className={styles.pageContainer}>
-      <button className={styles.backBtn} onClick={onBack}>
-        ← Volver
-      </button>
+      <button className={styles.backBtn} onClick={onBack}>← Volver</button>
 
-      {/* --- DIV SUPERIOR (Filtros) --- */}
       <div className={styles.topDiv}>
         <div className={styles.topCol1}>
           <div className={styles.field}>
             <label>Tipo de capacitación:</label>
             <select name="tipo" value={filters.tipo} onChange={handleInputChange}>
               <option value="">Selecciona una opción</option>
-              {typeOptions.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+              {typeOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
-
           <div className={styles.field}>
             <label>Departamento:</label>
             <select name="departamento" value={filters.departamento} onChange={handleInputChange}>
               <option value="">Selecciona una opción</option>
-              {deptosOptions.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
+              {deptosOptions.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-
           <div className={styles.rowInline}>
              <div className={`${styles.field} ${styles.inlineItem}`}>
               <label>Año:</label>
               <select name="anio" value={filters.anio} onChange={handleInputChange}>
                 <option value="">Todos</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
+                {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-
              <div className={`${styles.field} ${styles.inlineItem}`}>
               <label>Periodo:</label>
               <select name="periodo" value={filters.periodo} onChange={handleInputChange}>
                 <option value="">Todos</option>
-                {periodOptions.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
+                {periodOptions.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
           </div>
@@ -186,32 +171,24 @@ function Module4({ onBack }) {
             <label>Acreditado:</label>
             <select name="acreditado" value={filters.acreditado} onChange={handleInputChange}>
               <option value="">Selecciona una opción</option>
-              {acrediptions.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+              {acrediptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
         </div>
 
         <div className={styles.topCol3}>
-          <button className={styles.btnSearch} onClick={handleSearch}>
-            Buscar
-          </button>
-          <button className={styles.btnClean} onClick={handleClean}>
-            Limpiar
-          </button>
+          <button className={styles.btnSearch} onClick={handleSearch}>Buscar</button>
+          <button className={styles.btnClean} onClick={handleClean}>Limpiar</button>
         </div>
       </div>
 
-      {/* --- DIV CENTRAL (Tabla) --- */}
       <div className={styles.midDiv}>
         <div className={styles.tableWrapper}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>AP</th>
-                <th>AM</th>
+                {/* CAMBIO: Columnas actualizadas */}
+                <th>Nombre Completo</th>
                 <th>Año</th>
                 <th>Periodo</th>
                 <th>Licenciatura</th>
@@ -222,17 +199,12 @@ function Module4({ onBack }) {
             </thead>
             <tbody>
               {tableData.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className={styles.emptyRow}>
-                    No hay datos para mostrar
-                  </td>
-                </tr>
+                <tr><td colSpan="7" className={styles.emptyRow}>No hay datos para mostrar</td></tr>
               ) : (
                 tableData.map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.nombres}</td>
-                    <td>{row.ap}</td>
-                    <td>{row.am}</td>
+                    {/* CAMBIO: Datos actualizados */}
+                    <td>{row.nombre_completo}</td>
                     <td>{row.anio}</td>
                     <td>{row.periodo}</td>
                     <td>{row.licenciatura}</td>
@@ -247,29 +219,17 @@ function Module4({ onBack }) {
         </div>
       </div>
 
-      {/* --- DIV INFERIOR (Estadísticas y Exportar) --- */}
       <div className={styles.botDiv}>
         <div className={styles.botCol1}>
-          <p>
-            Número total de docentes: <strong>{stats.totalDocentes}</strong>
-          </p>
-          <p>
-            Número total de docentes que tomaron curso de capacitación: <strong>{stats.capacitados}</strong>
-          </p>
-          <p>
-            (%) de docentes que tomaron algún curso de capacitación: <strong>{stats.porcentaje}%</strong>
-          </p>
-          <p>
-            Número total de participantes de nivel posgrado (AP): <strong>{stats.totalPosgrado}</strong>
-          </p>
+          {/* Estadísticas Dinámicas */}
+          <p>Número total de docentes (en selección): <strong>{stats.totalDocentes}</strong></p>
+          <p>Número total de docentes que tomaron curso de capacitación: <strong>{stats.capacitados}</strong></p>
+          <p>(%) de docentes que tomaron algún curso de capacitación: <strong>{stats.porcentaje}%</strong></p>
+          <p>Número total de participantes de nivel posgrado (AP): <strong>{stats.totalPosgrado}</strong></p>
         </div>
 
         <div className={styles.botCol2}>
-          <label>Formato de archivo:</label>
-          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
-            <option value="excel">Excel (.xlsx)</option>
-            <option value="pdf">PDF (.pdf)</option>
-          </select>
+          <label>Exportar información a un archivo Excel</label>
           <button 
             className={styles.btnPrimary} 
             onClick={handleExport}
